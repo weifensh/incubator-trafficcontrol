@@ -1,4 +1,3 @@
-// Copyright 2015 Comcast Cable Communications Management, LLC
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +15,7 @@ package csconfig
 
 import (
 	"fmt"
-	"github.com/Comcast/traffic_control/traffic_ops/experimental/server/api"
+	"github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/api"
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/guregu/null.v3"
 	"log"

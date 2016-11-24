@@ -1,5 +1,4 @@
 /*
-   Copyright 2015 Comcast Cable Communications Management, LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -103,7 +102,7 @@ func (to *Session) TrafficMonitorConfigMap(cdn string) (*TrafficMonitorConfigMap
 // TrafficMonitorConfig ...
 func (to *Session) TrafficMonitorConfig(cdn string) (*TrafficMonitorConfig, error) {
 	url := fmt.Sprintf("/api/1.2/cdns/%s/configs/monitoring.json", cdn)
-	resp, err := to.request(url, nil)
+	resp, err := to.request("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}

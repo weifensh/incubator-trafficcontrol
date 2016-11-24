@@ -1,4 +1,3 @@
-// Copyright 2015 Comcast Cable Communications Management, LLC
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	api "github.com/Comcast/traffic_control/traffic_ops/experimental/server/api"
+	api "github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/api"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jmoiron/sqlx"
 	"io/ioutil"

@@ -1,5 +1,25 @@
 package config
 
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+
 import (
 	"encoding/json"
 	"io/ioutil"
@@ -36,6 +56,7 @@ type Config struct {
 	LogLocationDebug             string        `json:"log_location_debug"`
 	ServeReadTimeout             time.Duration `json:"-"`
 	ServeWriteTimeout            time.Duration `json:"-"`
+	HealthToStatRatio            uint64        `json:"health_to_stat_ratio"`
 }
 
 // DefaultConfig is the default configuration for the application, if no configuration file is given, or if a given config setting doesn't exist in the config file.
@@ -56,6 +77,7 @@ var DefaultConfig = Config{
 	LogLocationDebug:             LogLocationNull,
 	ServeReadTimeout:             10 * time.Second,
 	ServeWriteTimeout:            10 * time.Second,
+	HealthToStatRatio:            4,
 }
 
 // MarshalJSON marshals custom millisecond durations. Aliasing inspired by http://choly.ca/post/go-json-marshalling/

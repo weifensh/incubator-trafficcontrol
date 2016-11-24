@@ -1,4 +1,3 @@
-// Copyright 2015 Comcast Cable Communications Management, LLC
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +14,9 @@
 package main
 
 import (
-	"github.com/Comcast/traffic_control/traffic_ops/experimental/server/auth"
-	"github.com/Comcast/traffic_control/traffic_ops/experimental/server/db"
-	"github.com/Comcast/traffic_control/traffic_ops/experimental/server/routes"
+	"github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/auth"
+	"github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/db"
+	"github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/routes"
 
 	"encoding/gob"
 	"encoding/json"

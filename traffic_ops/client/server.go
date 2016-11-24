@@ -1,5 +1,4 @@
 /*
-   Copyright 2015 Comcast Cable Communications Management, LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -69,7 +68,7 @@ type Server struct {
 // Servers gets an array of servers
 func (to *Session) Servers() ([]Server, error) {
 	url := "/api/1.2/servers.json"
-	resp, err := to.request(url, nil)
+	resp, err := to.request("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func (to *Session) Servers() ([]Server, error) {
 // ServersByType gets an array of serves of a specified type.
 func (to *Session) ServersByType(qparams url.Values) ([]Server, error) {
 	url := fmt.Sprintf("/api/1.2/servers.json?%s", qparams.Encode())
-	resp, err := to.request(url, nil)
+	resp, err := to.request("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,4 @@
 /*
-   Copyright 2015 Comcast Cable Communications Management, LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -18,137 +17,9 @@ package client
 
 import "encoding/json"
 
-// DeliveryServiceResponse ...
-type DeliveryServiceResponse struct {
-	Version  string            `json:"version"`
-	Response []DeliveryService `json:"response"`
-}
-
-// DeliveryService ...
-type DeliveryService struct {
-	ID                   string `json:"id"`
-	XMLID                string `json:"xmlId"`
-	Active               bool   `json:"active"`
-	DSCP                 string `json:"dscp"`
-	Signed               bool   `json:"signed"`
-	QStringIgnore        string `json:"qstringIgnore"`
-	GeoLimit             string `json:"geoLimit"`
-	GeoProvider          string `json:"geoProvider"`
-	HTTPBypassFQDN       string `json:"httpBypassFqdn"`
-	DNSBypassIP          string `json:"dnsBypassIp"`
-	DNSBypassIP6         string `json:"dnsBypassIp6"`
-	DNSBypassCname       string `json:"dnsBypassCname"`
-	DNSBypassTTL         string `json:"dnsBypassTtl"`
-	OrgServerFQDN        string `json:"orgServerFqdn"`
-	Type                 string `json:"type"`
-	ProfileName          string `json:"profileName"`
-	ProfileDesc          string `json:"profileDescription"`
-	CDNName              string `json:"cdnName"`
-	CCRDNSTTL            string `json:"ccrDnsTtl"`
-	GlobalMaxMBPS        string `json:"globalMaxMbps"`
-	GlobalMaxTPS         string `json:"globalMaxTps"`
-	LongDesc             string `json:"longDesc"`
-	LongDesc1            string `json:"longDesc1"`
-	LongDesc2            string `json:"longDesc2"`
-	MaxDNSAnswers        string `json:"maxDnsAnswers"`
-	InfoURL              string `json:"infoUrl"`
-	MissLat              string `json:"missLat"`
-	MissLong             string `json:"missLong"`
-	CheckPath            string `json:"checkPath"`
-	LastUpdated          string `json:"lastUpdated"`
-	Protocol             string `json:"protocol"`
-	IPV6RoutingEnabled   bool   `json:"ipv6RoutingEnabled"`
-	RangeRequestHandling string `json:"rangeRequestHandling"`
-	HeaderRewrite        string `json:"headerRewrite"`
-	EdgeHeaderRewrite    string `json:"edgeHeaderRewrite"`
-	MidHeaderRewrite     string `json:"midHeaderRewrite"`
-	TRResponseHeaders    string `json:"trResponseHeaders"`
-	RegexRemap           string `json:"regexRemap"`
-	CacheURL             string `json:"cacheurl"`
-	RemapText            string `json:"remapText"`
-	MultiSiteOrigin      string `json:"multiSiteOrigin"`
-	DisplayName          string `json:"displayName"`
-	InitialDispersion    string `json:"initialDispersion"`
-}
-
-// DeliveryServiceStateResponse ...
-type DeliveryServiceStateResponse struct {
-	Response DeliveryServiceState `json:"response"`
-}
-
-// DeliveryServiceState ...
-type DeliveryServiceState struct {
-	Enabled  bool                    `json:"enabled"`
-	Failover DeliveryServiceFailover `json:"failover"`
-}
-
-// DeliveryServiceFailover ...
-type DeliveryServiceFailover struct {
-	Locations   []string                   `json:"locations"`
-	Destination DeliveryServiceDestination `json:"destination"`
-	Configured  bool                       `json:"configured"`
-	Enabled     bool                       `json:"enabled"`
-}
-
-// DeliveryServiceDestination ...
-type DeliveryServiceDestination struct {
-	Location string `json:"location"`
-	Type     string `json:"type"`
-}
-
-// DeliveryServiceHealthResponse ...
-type DeliveryServiceHealthResponse struct {
-	Response DeliveryServiceHealth `json:"response"`
-}
-
-// DeliveryServiceHealth ...
-type DeliveryServiceHealth struct {
-	TotalOnline  int                         `json:"totalOnline"`
-	TotalOffline int                         `json:"totalOffline"`
-	CacheGroups  []DeliveryServiceCacheGroup `json:"cacheGroups"`
-}
-
-// DeliveryServiceCacheGroup ...
-type DeliveryServiceCacheGroup struct {
-	Online  int    `json:"online"`
-	Offline int    `json:"offline"`
-	Name    string `json:"name"`
-}
-
-// DeliveryServiceCapacityResponse ...
-type DeliveryServiceCapacityResponse struct {
-	Response DeliveryServiceCapacity `json:"response"`
-}
-
-// DeliveryServiceCapacity ...
-type DeliveryServiceCapacity struct {
-	AvailablePercent   float64 `json:"availablePercent"`
-	UnavailablePercent float64 `json:"unavailablePercent"`
-	UtilizedPercent    float64 `json:"utilizedPercent"`
-	MaintenancePercent float64 `json:"maintenancePercent"`
-}
-
-// DeliveryServiceRoutingResponse ...
-type DeliveryServiceRoutingResponse struct {
-	Response DeliveryServiceRouting `json:"response"`
-}
-
-// DeliveryServiceRouting ...
-type DeliveryServiceRouting struct {
-	StaticRoute       int     `json:"staticRoute"`
-	Miss              int     `json:"miss"`
-	Geo               float64 `json:"geo"`
-	Err               int     `json:"err"`
-	CZ                float64 `json:"cz"`
-	DSR               float64 `json:"dsr"`
-	Fed               int     `json:"fed"`
-	RegionalAlternate int     `json:"regionalAlternate"`
-	RegionalDenied    int     `json:"regionalDenied"`
-}
-
 // DeliveryServices gets an array of DeliveryServices
 func (to *Session) DeliveryServices() ([]DeliveryService, error) {
-	var data DeliveryServiceResponse
+	var data GetDeliveryServiceResponse
 	err := get(to, deliveryServicesEp(), &data)
 	if err != nil {
 		return nil, err
@@ -159,13 +30,55 @@ func (to *Session) DeliveryServices() ([]DeliveryService, error) {
 
 // DeliveryService gets the DeliveryService for the ID it's passed
 func (to *Session) DeliveryService(id string) (*DeliveryService, error) {
-	var data DeliveryServiceResponse
+	var data GetDeliveryServiceResponse
 	err := get(to, deliveryServiceEp(id), &data)
 	if err != nil {
 		return nil, err
 	}
 
 	return &data.Response[0], nil
+}
+
+// CreateDeliveryService creates the DeliveryService it's passed
+func (to *Session) CreateDeliveryService(ds *DeliveryService) (*DeliveryServiceResponse, error) {
+	var data DeliveryServiceResponse
+	jsonReq, err := json.Marshal(ds)
+	if err != nil {
+		return nil, err
+	}
+	err = post(to, deliveryServicesEp(), jsonReq, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+// UpdateDeliveryService updates the DeliveryService matching the ID it's passed with
+// the DeliveryService it is passed
+func (to *Session) UpdateDeliveryService(id string, ds *DeliveryService) (*DeliveryServiceResponse, error) {
+	var data DeliveryServiceResponse
+	jsonReq, err := json.Marshal(ds)
+	if err != nil {
+		return nil, err
+	}
+	err = put(to, deliveryServiceEp(id), jsonReq, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+// DeleteDeliveryService deletes the DeliveryService matching the ID it's passed
+func (to *Session) DeleteDeliveryService(id string) (*DeleteDeliveryServiceResponse, error) {
+	var data DeleteDeliveryServiceResponse
+	err := del(to, deliveryServiceEp(id), &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data, nil
 }
 
 // DeliveryServiceState gets the DeliveryServiceState for the ID it's passed
@@ -212,8 +125,57 @@ func (to *Session) DeliveryServiceRouting(id string) (*DeliveryServiceRouting, e
 	return &data.Response, nil
 }
 
+// DeliveryServiceServer gets the DeliveryServiceServer
+func (to *Session) DeliveryServiceServer(page, limit string) ([]DeliveryServiceServer, error) {
+	var data DeliveryServiceServerResponse
+	err := get(to, deliveryServiceServerEp(page, limit), &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.Response, nil
+}
+
+// DeliveryServiceSSLKeysByID gets the DeliveryServiceSSLKeys by ID
+func (to *Session) DeliveryServiceSSLKeysByID(id string) (*DeliveryServiceSSLKeys, error) {
+	var data DeliveryServiceSSLKeysResponse
+	err := get(to, deliveryServiceSSLKeysByIDEp(id), &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data.Response, nil
+}
+
+// DeliveryServiceSSLKeysByHostname gets the DeliveryServiceSSLKeys by Hostname
+func (to *Session) DeliveryServiceSSLKeysByHostname(hostname string) (*DeliveryServiceSSLKeys, error) {
+	var data DeliveryServiceSSLKeysResponse
+	err := get(to, deliveryServiceSSLKeysByHostnameEp(hostname), &data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &data.Response, nil
+}
+
 func get(to *Session, endpoint string, respStruct interface{}) error {
-	resp, err := to.request(endpoint, nil)
+	return makeReq(to, "GET", endpoint, nil, respStruct)
+}
+
+func post(to *Session, endpoint string, body []byte, respStruct interface{}) error {
+	return makeReq(to, "POST", endpoint, body, respStruct)
+}
+
+func put(to *Session, endpoint string, body []byte, respStruct interface{}) error {
+	return makeReq(to, "PUT", endpoint, body, respStruct)
+}
+
+func del(to *Session, endpoint string, respStruct interface{}) error {
+	return makeReq(to, "DELETE", endpoint, nil, respStruct)
+}
+
+func makeReq(to *Session, method, endpoint string, body []byte, respStruct interface{}) error {
+	resp, err := to.request(method, endpoint, body)
 	if err != nil {
 		return err
 	}

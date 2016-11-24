@@ -1,4 +1,3 @@
-// Copyright 2015 Comcast Cable Communications Management, LLC
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,8 +112,7 @@ func writeFile(schemas []ColumnSchema, table string) (int, error) {
 	}
 	defer file.Close()
 
-	license := "// Copyright 2015 Comcast Cable Communications Management, LLC\n\n"
-	license += "// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+	license := "// Licensed under the Apache License, Version 2.0 (the \"License\");\n"
 	license += "// you may not use this file except in compliance with the License.\n"
 	license += "// You may obtain a copy of the License at\n\n"
 	license += "// http://www.apache.org/licenses/LICENSE-2.0\n\n"
@@ -136,7 +134,7 @@ func writeFile(schemas []ColumnSchema, table string) (int, error) {
 	if strings.Contains(sString, "null.") {
 		header += "null \"gopkg.in/guregu/null.v3\"\n"
 	}
-	header += "_ \"github.com/Comcast/traffic_control/traffic_ops/experimental/server/output_format\" // needed for swagger\n"
+	header += "_ \"github.com/apache/incubator-trafficcontrol/traffic_ops/experimental/server/output_format\" // needed for swagger\n"
 	if strings.Contains(sString, "time.") {
 		header += "\"time\"\n"
 	}

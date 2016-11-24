@@ -1,5 +1,25 @@
 package cache
 
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+
 import (
 	"encoding/json"
 	"fmt"
@@ -27,6 +47,7 @@ type Handler struct {
 }
 
 // NewHandler returns a new cache handler. Note this handler does NOT precomputes stat data before calling ResultChannel, and Result.Precomputed will be nil
+// TODO change this to take the ResultChan. It doesn't make sense for the Handler to 'own' the Result Chan.
 func NewHandler() Handler {
 	return Handler{ResultChannel: make(chan Result), MultipleSpaceRegex: regexp.MustCompile(" +")}
 }
@@ -52,15 +73,16 @@ type PrecomputedData struct {
 
 // Result is the data result returned by a cache.
 type Result struct {
-	ID        enum.CacheName
-	Available bool
-	Error     error
-	Astats    Astats
-	Time      time.Time
-	Vitals    Vitals
-	PrecomputedData
+	ID           enum.CacheName
+	Error        error
+	Astats       Astats
+	Time         time.Time
+	RequestTime  time.Duration
+	Vitals       Vitals
 	PollID       uint64
 	PollFinished chan<- uint64
+	PrecomputedData
+	Available bool
 }
 
 // Vitals is the vitals data returned from a cache.
@@ -126,7 +148,7 @@ func StatsMarshall(statHistory map[enum.CacheName][]Result, filter Filter, param
 					stats.Caches[id] = map[string][]Stat{}
 				}
 
-				stats.Caches[id][stat] = append(stats.Caches[id][stat], s)
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], Stat{Time: s.Time, Value: fmt.Sprintf("%v", s.Value)}) // convert stats to strings, for the TM1.0 /publish/CacheStats API
 			}
 		}
 	}
@@ -135,18 +157,19 @@ func StatsMarshall(statHistory map[enum.CacheName][]Result, filter Filter, param
 }
 
 // Handle handles results fetched from a cache, parsing the raw Reader data and passing it along to a chan for further processing.
-func (handler Handler) Handle(id string, r io.Reader, err error, pollID uint64, pollFinished chan<- uint64) {
+func (handler Handler) Handle(id string, r io.Reader, reqTime time.Duration, reqErr error, pollID uint64, pollFinished chan<- uint64) {
 	log.Debugf("poll %v %v handle start\n", pollID, time.Now())
 	result := Result{
 		ID:           enum.CacheName(id),
 		Time:         time.Now(), // TODO change this to be computed the instant we get the result back, to minimise inaccuracy
+		RequestTime:  reqTime,
 		PollID:       pollID,
 		PollFinished: pollFinished,
 	}
 
-	if err != nil {
-		log.Errorf("%v handler given error '%v'\n", id, err) // error here, in case the thing that called Handle didn't error
-		result.Error = err
+	if reqErr != nil {
+		log.Errorf("%v handler given error '%v'\n", id, reqErr) // error here, in case the thing that called Handle didn't error
+		result.Error = reqErr
 		handler.ResultChannel <- result
 		return
 	}
@@ -160,9 +183,9 @@ func (handler Handler) Handle(id string, r io.Reader, err error, pollID uint64, 
 
 	result.PrecomputedData.Reporting = true
 
-	if err := json.NewDecoder(r).Decode(&result.Astats); err != nil {
-		log.Errorf("%s procnetdev decode error '%v'\n", id, err)
-		result.Error = err
+	if decodeErr := json.NewDecoder(r).Decode(&result.Astats); decodeErr != nil {
+		log.Errorf("%s procnetdev decode error '%v'\n", id, decodeErr)
+		result.Error = decodeErr
 		handler.ResultChannel <- result
 		return
 	}
@@ -177,9 +200,9 @@ func (handler Handler) Handle(id string, r io.Reader, err error, pollID uint64, 
 
 	log.Debugf("poll %v %v handle decode end\n", pollID, time.Now())
 
-	if err != nil {
-		result.Error = err
-		log.Errorf("addkbps handle %s error '%v'\n", id, err)
+	if reqErr != nil {
+		result.Error = reqErr
+		log.Errorf("addkbps handle %s error '%v'\n", id, reqErr)
 	} else {
 		result.Available = true
 	}

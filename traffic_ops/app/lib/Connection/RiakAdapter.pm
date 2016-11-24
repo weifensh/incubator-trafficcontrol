@@ -1,6 +1,5 @@
 package Connection::RiakAdapter;
 #
-# Copyright 2015 Comcast Cable Communications Management, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,12 +96,10 @@ sub put {
 	my $value        = shift || confess("Supply a value");
 	my $content_type = shift || 'application/json';
 
-	$ua->default_header( 'Content-Type' => $content_type );
-
 	my $key_uri = $self->get_key_uri( $bucket, $key );
 	my $fqdn = $self->get_url($key_uri);
 
-	return $ua->put( $fqdn, Content => $value );
+	return $ua->put( $fqdn, Content => $value, 'Content-Type'=> $content_type );
 }
 
 sub delete {

@@ -1,5 +1,4 @@
 /*
- * Copyright 2016 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,8 +77,6 @@ public class CertificateChecker {
 			return true;
 		}
 
-		boolean hasValidCertificates = false;
-
 		for (int i = 0; i < domains.length(); i++) {
 			final String domain = domains.optString(i, "").replaceAll("^\\*\\.", "");
 			if (domain == null || domain.isEmpty()) {
@@ -88,13 +85,14 @@ public class CertificateChecker {
 
 			for (final CertificateData certificateData : certificateDataList) {
 				if (certificateData.getDeliveryservice().equals(deliveryServiceId)) {
-					hasValidCertificates = true;
+					LOGGER.debug("Delivery Service " + deliveryServiceId + " has certificate data for https");
+					return true;
 				}
 			}
 			LOGGER.error("No certificate data for https " + deliveryServiceId + " domain " + domain);
 		}
 
-		return hasValidCertificates;
+		return false;
 	}
 
 	private boolean supportsHttps(final JSONObject deliveryServiceJson, final JSONObject protocolJson) {

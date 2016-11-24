@@ -1,6 +1,5 @@
 #!/usr/bin/perl
 #
-# Copyright 2015 Comcast Cable Communications Management, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +39,11 @@ foreach my $ds (@$dss) {
 	if ($ds->{protocol} > 0) {
 		my $xml_id = $ds->{xmlId};
 		my $cdn = $ds->{cdnName};
+		print "Updating record for: $xml_id\n";
 		my $record = &get_riak_record($xml_id, $to_url, $ua);
+		if (!defined($record)) {
+			next;
+		}
 		$record->{deliveryservice} = $xml_id;
 		$record->{cdn} = $cdn;
 		$record->{certificate}->{crt} = decode_base64($record->{certificate}->{crt});
@@ -118,8 +121,8 @@ sub get_riak_record {
 	my $response = $ua->get( $url );
 
 	if(!$response->is_success() || $response->code() > 400) {
-		print "Could not get ssl record for $xml_id from riak!  Response was ". $response->{_rc} . " - " . $response->{_msg} . "\n";
-		exit 1;
+		print "Could not get ssl record for $xml_id from riak!  Response was ". $response->{_rc} . " - " . $response->{_msg} . "Skipping...\n";
+		return;
 	}
 
 	my $content = decode_json($response->{_content});

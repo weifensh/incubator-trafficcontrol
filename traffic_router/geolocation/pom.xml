@@ -25,7 +25,7 @@ under the License.
 	<parent>
 		<artifactId>traffic_router</artifactId>
 		<groupId>com.comcast.cdn.traffic_control.traffic_router</groupId>
-		<version>1.8.0</version>
+		<version>1.9.0</version>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 
@@ -39,14 +39,22 @@ under the License.
 		<dependency>
 			<groupId>org.hamcrest</groupId>
 			<artifactId>hamcrest-all</artifactId>
-			<version>${hamcrest.version}</version>
-			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>${junit.version}</version>
-			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

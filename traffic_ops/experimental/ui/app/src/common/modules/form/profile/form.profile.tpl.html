@@ -19,10 +19,25 @@ under the License.
 
 <div class="x_panel">
     <div class="x_title">
-        <ol class="breadcrumb">
+        <ol class="breadcrumb pull-left">
             <li><a ng-click="navigateToPath('/admin/profiles')">Profiles</a></li>
             <li class="active">{{profileName}}</li>
         </ol>
+        <div class="pull-right" role="group" ng-show="!settings.isNew">
+            <button class="btn btn-primary" ng-click="viewParams()">View Parameters &nbsp;&nbsp;<i class="fa fa-sticky-note"></i></button>
+            <button class="btn btn-primary" ng-click="viewServers()">View Servers &nbsp;&nbsp;<i class="fa fa-server"></i></button>
+
+            <div class="btn-group" role="group" uib-dropdown is-open="more.isopen">
+                <button type="button" class="btn btn-default dropdown-toggle" uib-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                    More
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu-right dropdown-menu" uib-dropdown-menu>
+                    <li role="menuitem"><a ng-click="cloneProfile()">Clone Profile</a></li>
+                    <li role="menuitem"><a ng-click="exportProfile()">Export Profile</a></li>
+                </ul>
+            </div>
+        </div>
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
@@ -44,8 +59,8 @@ under the License.
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" ng-show="settings.showDelete" ng-click="confirmDelete(profile)">Delete</button>
-                <button type="button" class="btn btn-primary" ng-disabled="profileForm.$pristine || profileForm.$invalid" ng-click="save(profile)">{{settings.saveLabel}}</button>
+                <button type="button" class="btn btn-danger" ng-show="!settings.isNew" ng-click="confirmDelete(profile)">Delete</button>
+                <button type="button" class="btn btn-success" ng-disabled="profileForm.$pristine || profileForm.$invalid" ng-click="save(profile)">{{settings.saveLabel}}</button>
             </div>
         </form>
     </div>

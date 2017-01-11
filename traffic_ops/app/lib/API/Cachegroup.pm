@@ -33,21 +33,27 @@ sub index {
 	my @data;
 	my %idnames;
 	my $orderby = $self->param('orderby') || "name";
+	my $type_id = $self->param('type');
 
 	my $rs_idnames = $self->db->resultset("Cachegroup")->search( undef, { columns => [qw/id name/] } );
 	while ( my $row = $rs_idnames->next ) {
 		$idnames{ $row->id } = $row->name;
 	}
 
-	my $rs_data = $self->db->resultset("Cachegroup")->search( undef, { prefetch => [ { 'type' => undef, } ], order_by => 'me.' . $orderby } );
+	my %criteria;
+	if ( defined $type_id ) {
+		$criteria{'type'} = $type_id;
+	}
+
+	my $rs_data = $self->db->resultset("Cachegroup")->search( \%criteria, { prefetch => [ { 'type' => undef, } ], order_by => 'me.' . $orderby } );
 	while ( my $row = $rs_data->next ) {
 		push(
 			@data, {
 				"id"                            => $row->id,
 				"name"                          => $row->name,
 				"shortName"                     => $row->short_name,
-				"latitude"                      => $row->latitude,
-				"longitude"                     => $row->longitude,
+				"latitude"                      => 0.0 + $row->latitude,
+				"longitude"                     => 0.0 + $row->longitude,
 				"lastUpdated"                   => $row->last_updated,
 				"parentCachegroupId"            => $row->parent_cachegroup_id,
 				"parentCachegroupName"          => ( defined $row->parent_cachegroup_id ) ? $idnames{ $row->parent_cachegroup_id } : undef,
@@ -99,8 +105,8 @@ sub show {
 				"id"                            => $row->id,
 				"name"                          => $row->name,
 				"shortName"                     => $row->short_name,
-				"latitude"                      => $row->latitude,
-				"longitude"                     => $row->longitude,
+				"latitude"                      => 0.0 + $row->latitude,
+				"longitude"                     => 0.0 + $row->longitude,
 				"lastUpdated"                   => $row->last_updated,
 				"parentCachegroupId"            => $row->parent_cachegroup_id,
 				"parentCachegroupName"          => ( defined $row->parent_cachegroup_id ) ? $idnames{ $row->parent_cachegroup_id } : undef,
@@ -175,8 +181,8 @@ sub update {
 		$response->{id}                 = $rs->id;
 		$response->{name}               = $rs->name;
 		$response->{shortName}          = $rs->short_name;
-		$response->{latitude}           = $rs->latitude;
-		$response->{longitude}          = $rs->longitude;
+		$response->{latitude}           = 0.0 + $rs->latitude;
+		$response->{longitude}          = 0.0 + $rs->longitude;
 		$response->{lastUpdated}        = $rs->last_updated;
 		$response->{parentCachegroupId} = $rs->parent_cachegroup_id;
 		$response->{parentCachegroupName} =
@@ -251,8 +257,8 @@ sub create {
 		$response->{id}                 = $rs->id;
 		$response->{name}               = $rs->name;
 		$response->{shortName}          = $rs->short_name;
-		$response->{latitude}           = $rs->latitude;
-		$response->{longitude}          = $rs->longitude;
+		$response->{latitude}           = 0.0 + $rs->latitude;
+		$response->{longitude}          = 0.0 + $rs->longitude;
 		$response->{lastUpdated}        = $rs->last_updated;
 		$response->{parentCachegroupId} = $rs->parent_cachegroup_id;
 		$response->{parentCachegroupName} =

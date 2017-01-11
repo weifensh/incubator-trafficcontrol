@@ -36,7 +36,7 @@ The following are requirements to ensure an accurate set up:
 1. If no suitable profile exists, create a new profile for Traffic Router.
 
 2. Enter the Traffic Router server into Traffic Ops, assign it to a Traffic Router profile, and ensure that its status is set to ``ONLINE``.
-3. Ensure the FQDN of the Traffic Monitor is resolvable in DNS. This FQDN must be resolvable by the clients expected to use this CDN.
+3. Ensure the FQDN of the Traffic Router is resolvable in DNS. This FQDN must be resolvable by the clients expected to use this CDN.
 4. Install a traffic router: ``sudo yum install traffic_router``.
 5. Edit ``/opt/traffic_router/conf/traffic_monitor.properties`` and specify the correct online Traffic Monitor(s) for your CDN. See :ref:`rl-tr-config-files`
 	# traffic_monitor.properties: url that should normally point to this file
@@ -492,3 +492,21 @@ During the test it will provide feedback about request latency and transactions 
 
 While it is running it is suggested that you monitor your Traffic Router nodes for memory and CPU utilization.
 
+Tuning Recommendations
+======================
+
+The following is an example of /opt/tomcat/bin/setenv.sh that has been tested on a multi core server running under HTTPS load test requests.
+This is following the general recommendation to use the G1 garbage collector for JVM applications running on multi core machines.
+In addition to using the G1 garbage collector the InitiatingHeapOccupancyPercent was lowered to run garbage collection more frequently which
+improved overall throughput for Traffic Router and reduced 'Stop the World' garbage collection. Note that setting the min and max heap settings
+in setenv.sh will override init scripts in /etc/init.d/tomcat.
+
+  /opt/tomcat/bin/setenv.sh::
+
+
+      #! /bin/sh
+      export CATALINA_OPTS="$CATALINA_OPTS -server"
+      export CATALINA_OPTS="$CATALINA_OPTS -Xms2g -Xmx2g"
+      export CATALINA_OPTS="$CATALINA_OPTS -XX:+UseG1GC"
+      export CATALINA_OPTS="$CATALINA_OPTS -XX:+UnlockExperimentalVMOptions"
+      export CATALINA_OPTS="$CATALINA_OPTS -XX:InitiatingHeapOccupancyPercent=30"

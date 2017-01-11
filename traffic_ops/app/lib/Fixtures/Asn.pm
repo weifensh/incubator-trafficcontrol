@@ -18,12 +18,21 @@ extends 'DBIx::Class::EasyFixture';
 use namespace::autoclean;
 
 my %definition_for = (
+  ## id => 1
 	test_cran_1 => {
 		new   => 'Asn',
 		using => {
-			id         => 1,
+			id         => 100,
 			asn        => 9939,
-			cachegroup => 1,
+			cachegroup => 100,
+		},
+	},
+	test_cran_2 => {
+		new   => 'Asn',
+		using => {
+			id         => 200,
+			asn        => 9940,
+			cachegroup => 200,
 		},
 	},
 );

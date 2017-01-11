@@ -17,7 +17,7 @@
  * under the License.
  */
 
-var FormCacheGroupController = function(cacheGroup, $scope, formUtils, locationUtils, cacheGroupService, typeService) {
+var FormCacheGroupController = function(cacheGroup, $scope, $location, formUtils, locationUtils, cacheGroupService, typeService) {
 
     var getCacheGroups = function() {
         cacheGroupService.getCacheGroups()
@@ -27,13 +27,41 @@ var FormCacheGroupController = function(cacheGroup, $scope, formUtils, locationU
     };
 
     var getTypes = function() {
-        typeService.getTypes('cachegroup')
+        typeService.getTypes({ useInTable: 'cachegroup' })
             .then(function(result) {
                 $scope.types = result;
             });
     };
 
     $scope.cacheGroup = cacheGroup;
+
+    $scope.queueUpdates = function() {
+        alert('not hooked up yet: queuing updates for all cachegroup servers');
+    };
+
+    $scope.dequeueUpdates = function() {
+        alert('not hooked up yet: dequeuing updates for all cachegroup servers');
+    };
+
+    $scope.viewAsns = function() {
+        $location.path($location.path() + '/asns');
+    };
+
+    $scope.viewParams = function() {
+        $location.path($location.path() + '/parameters');
+    };
+
+    $scope.viewServers = function() {
+        $location.path($location.path() + '/servers');
+    };
+
+    $scope.viewParams = function() {
+        $location.path($location.path() + '/parameters');
+    };
+
+    $scope.viewServers = function() {
+        $location.path($location.path() + '/servers');
+    };
 
     $scope.navigateToPath = locationUtils.navigateToPath;
 
@@ -49,5 +77,5 @@ var FormCacheGroupController = function(cacheGroup, $scope, formUtils, locationU
 
 };
 
-FormCacheGroupController.$inject = ['cacheGroup', '$scope', 'formUtils', 'locationUtils', 'cacheGroupService', 'typeService'];
+FormCacheGroupController.$inject = ['cacheGroup', '$scope', '$location', 'formUtils', 'locationUtils', 'cacheGroupService', 'typeService'];
 module.exports = FormCacheGroupController;

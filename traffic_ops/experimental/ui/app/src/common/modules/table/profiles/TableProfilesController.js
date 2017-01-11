@@ -22,11 +22,19 @@ var TableProfilesController = function(profiles, $scope, locationUtils) {
     $scope.profiles = profiles;
 
     $scope.editProfile = function(id) {
-        locationUtils.navigateToPath('/admin/profiles/' + id + '/edit');
+        locationUtils.navigateToPath('/admin/profiles/' + id);
     };
 
     $scope.createProfile = function() {
         locationUtils.navigateToPath('/admin/profiles/new');
+    };
+
+    $scope.importProfile = function() {
+        alert('not hooked up yet: importProfile');
+    };
+
+    $scope.compareProfiles = function() {
+        alert('not hooked up yet: compareProfiles');
     };
 
     angular.element(document).ready(function () {

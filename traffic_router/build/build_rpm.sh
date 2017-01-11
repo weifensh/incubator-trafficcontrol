@@ -36,7 +36,7 @@ function installDnsSec {
 	local dnssecversion=0.12
 	local dnssectools=jdnssec-tools
 	local dnssec="$dnssectools-$dnssecversion"
-	local dnssecurl=http://www.verisignlabs.com/dnssec-tools/packages
+	local dnssecurl=http://www.verisignlabs.com/dnssec-tools/packages/old-releases
 
 	curl -o "$dnssec".tar.gz "$dnssecurl/$dnssec".tar.gz || \
 		{ echo "Could not download required $dnssec library: $?"; exit 1; }
@@ -56,7 +56,7 @@ function buildRpmTrafficRouter () {
 	installDnsSec
 
 	cd "$TR_DIR" || { echo "Could not cd to $TR_DIR: $?"; exit 1; }
-	export GIT_REV_COUNT=$(getRevCount)
+	export BUILD_NUMBER=${BUILD_NUMBER:-$(getBuildNumber)}
 	mvn -P rpm-build -Dmaven.test.skip=true -DminimumTPS=1 clean package ||  \
 		{ echo "RPM BUILD FAILED: $?"; exit 1; }
 
@@ -105,7 +105,6 @@ function checkEnvironment() {
 	echo "TC_VERSION: $TC_VERSION"
 	echo "RPM: $RPM"
 	echo "--------------------------------------------------"
-    export TRAFFIC_CONTROL_VERSION="$TC_VERSION"
 }
 
 # ---------------------------------------
@@ -115,9 +114,9 @@ function initBuildArea() {
 
 	tr_dest=$(createSourceDir traffic_router)
 
-	export MVN_CMD="mvn versions:set -DnewVersion=$TRAFFIC_CONTROL_VERSION"
+	export MVN_CMD="mvn versions:set -DnewVersion=$TC_VERSION"
 	echo $MVN_CMD
-	$MVN_CMD
+	(cd $TR_DIR; $MVN_CMD)
 	cp -r "$TR_DIR"/{build,connector,core} "$tr_dest"/. || { echo "Could not copy to $tr_dest: $?"; exit 1; }
 	cp  "$TR_DIR"/pom.xml "$tr_dest" || { echo "Could not copy to $tr_dest: $?"; exit 1; }
 

@@ -22,11 +22,15 @@ var TableServersController = function(servers, $scope, locationUtils) {
     $scope.servers = servers;
 
     $scope.editServer = function(id) {
-        locationUtils.navigateToPath('/configure/servers/' + id + '/edit');
+        locationUtils.navigateToPath('/configure/servers/' + id);
     };
 
     $scope.createServer = function() {
         locationUtils.navigateToPath('/configure/servers/new');
+    };
+
+    $scope.uploadServerCSV = function() {
+        alert('not hooked up yet: uploadServerCSV');
     };
 
     angular.element(document).ready(function () {

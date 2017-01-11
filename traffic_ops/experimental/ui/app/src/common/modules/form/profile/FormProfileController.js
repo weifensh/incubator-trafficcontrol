@@ -17,7 +17,7 @@
  * under the License.
  */
 
-var FormProfileController = function(profile, $scope, formUtils, stringUtils, locationUtils) {
+var FormProfileController = function(profile, $scope, $location, formUtils, stringUtils, locationUtils) {
 
     $scope.profile = profile;
 
@@ -27,6 +27,22 @@ var FormProfileController = function(profile, $scope, formUtils, stringUtils, lo
 
     $scope.labelize = stringUtils.labelize;
 
+    $scope.viewParams = function() {
+        $location.path($location.path() + '/parameters');
+    };
+
+    $scope.viewServers = function() {
+        $location.path($location.path() + '/servers');
+    };
+
+    $scope.cloneProfile = function() {
+        alert('not hooked up yet: cloneProfile');
+    };
+
+    $scope.exportProfile = function() {
+        alert('not hooked up yet: exportProfile');
+    };
+
     $scope.navigateToPath = locationUtils.navigateToPath;
 
     $scope.hasError = formUtils.hasError;
@@ -35,5 +51,5 @@ var FormProfileController = function(profile, $scope, formUtils, stringUtils, lo
 
 };
 
-FormProfileController.$inject = ['profile', '$scope', 'formUtils', 'stringUtils', 'locationUtils'];
+FormProfileController.$inject = ['profile', '$scope', '$location', 'formUtils', 'stringUtils', 'locationUtils'];
 module.exports = FormProfileController;

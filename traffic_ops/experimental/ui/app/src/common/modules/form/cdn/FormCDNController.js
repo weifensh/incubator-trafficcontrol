@@ -17,7 +17,7 @@
  * under the License.
  */
 
-var FormCDNController = function(cdn, $scope, formUtils, stringUtils, locationUtils) {
+var FormCDNController = function(cdn, $scope, $location, formUtils, stringUtils, locationUtils) {
 
     $scope.cdn = cdn;
 
@@ -32,6 +32,38 @@ var FormCDNController = function(cdn, $scope, formUtils, stringUtils, locationUt
         { value: true, label: 'true' }
     ];
 
+    $scope.manageDNSSEC = function() {
+        alert('not hooked up yet: manageDNSSEC for CDN');
+    };
+
+    $scope.manageSSL = function() {
+        alert('not hooked up yet: manageSSL for cdn');
+    };
+
+    $scope.cachegroupHealth = function() {
+        alert('not hooked up yet: cachegroupHealth for CDN');
+    };
+
+    $scope.queueUpdates = function() {
+        alert('not hooked up yet: queuing updates for all cdn servers');
+    };
+
+    $scope.dequeueUpdates = function() {
+        alert('not hooked up yet: dequeuing updates for all cdn servers');
+    };
+
+    $scope.manageSnapshots = function() {
+        alert('not hooked up yet: manageSnapshots for CDN');
+    };
+
+    $scope.viewServers = function() {
+        $location.path($location.path() + '/servers');
+    };
+
+    $scope.viewDeliveryServices = function() {
+        $location.path($location.path() + '/delivery-services');
+    };
+
     $scope.navigateToPath = locationUtils.navigateToPath;
 
     $scope.hasError = formUtils.hasError;
@@ -40,5 +72,5 @@ var FormCDNController = function(cdn, $scope, formUtils, stringUtils, locationUt
 
 };
 
-FormCDNController.$inject = ['cdn', '$scope', 'formUtils', 'stringUtils', 'locationUtils'];
+FormCDNController.$inject = ['cdn', '$scope', '$location', 'formUtils', 'stringUtils', 'locationUtils'];
 module.exports = FormCDNController;

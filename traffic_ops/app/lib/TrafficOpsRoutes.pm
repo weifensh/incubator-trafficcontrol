@@ -102,12 +102,6 @@ sub ui_routes {
 
 	# -- Configfiles
 	$r->route('/genfiles/:mode/:id/#filename')->via('GET')->over( authenticated => 1 )->to( 'ConfigFiles#genfiles', namespace => $namespace );
-	$r->route('/genfiles/:mode/byprofile/:profile/CRConfig.xml')->via('GET')->over( authenticated => 1 )
-		->to( 'ConfigFiles#genfiles_crconfig_profile', namespace => $namespace );
-	$r->route('/genfiles/:mode/bycdnname/:cdnname/CRConfig.xml')->via('GET')->over( authenticated => 1 )
-		->to( 'ConfigFiles#genfiles_crconfig_cdnname', namespace => $namespace );
-	$r->route('/snapshot_crconfig')->via( 'GET', 'POST' )->over( authenticated => 1 )->to( 'ConfigFiles#snapshot_crconfig', namespace => $namespace );
-	$r->post('/upload_ccr_compare')->over( authenticated => 1 )->to( 'ConfigFiles#diff_ccr_xml_file', namespace => $namespace );
 
 	# -- Asn
 	$r->get('/asns')->over( authenticated => 1 )->to( 'Asn#index', namespace => $namespace );
@@ -189,6 +183,8 @@ sub ui_routes {
 	$r->post('/federation/:federation_id')->name('federation_update')->to( 'Federation#update', namespace => $namespace );
 	$r->get("/federation/resolvers")->to( 'Federation#resolvers', namespace => $namespace );
 	$r->get("/federation/users")->to( 'Federation#users', namespace => $namespace );
+	$r->get( "/federation/resolvers")->to( 'Federation#resolvers', namespace => $namespace );
+	$r->get( "/federation/users")->to( 'Federation#users',     namespace => $namespace );
 
 	# -- Gendbdump - Get DB dump
 	$r->get('/dbdump')->over( authenticated => 1 )->to( 'GenDbDump#dbdump', namespace => $namespace );
@@ -335,6 +331,7 @@ sub ui_routes {
 
 	# -- Topology - CCR Config, rewrote in json
 	$r->route('/genfiles/:mode/bycdnname/:cdnname/CRConfig')->via('GET')->over( authenticated => 1 )->to( 'Topology#ccr_config', namespace => $namespace );
+	$r->get('/CRConfig-Snapshots/:cdn_name/CRConfig.json')->over( authenticated => 1 )->to( 'Snapshot#get_cdn_snapshot', namespace => $namespace );
 
 	$r->get('/types')->over( authenticated => 1 )->to( 'Types#index', namespace => $namespace );
 	$r->route('/types/add')->via('GET')->over( authenticated => 1 )->to( 'Types#add', namespace => $namespace );
@@ -402,6 +399,8 @@ sub api_routes {
 	$r->post("/api/$version/cachegroups")->over( authenticated => 1 )->to( 'Cachegroup#create', namespace => $namespace );
 	$r->put("/api/$version/cachegroups/:id")->over( authenticated => 1 )->to( 'Cachegroup#update', namespace => $namespace );
 	$r->delete("/api/$version/cachegroups/:id")->over( authenticated => 1 )->to( 'Cachegroup#delete', namespace => $namespace );
+
+	$r->get( "/api/$version/cachegroups/:id/parameters")->over( authenticated => 1 )->to( 'Parameter#get_cachegroup_params', namespace => $namespace );
 
 	# alternate cachegroup routes
 	$r->get("/api/$version/cachegroups/list")->over( authenticated => 1 )->to( 'Cachegroup2#index', namespace => $namespace );
@@ -481,6 +480,9 @@ sub api_routes {
 	$r->post("/api/$version/deliveryservices")->over( authenticated => 1 )->to( 'Deliveryservice#create', namespace => $namespace );
 	$r->put("/api/$version/deliveryservices/:id")->over( authenticated => 1 )->to( 'Deliveryservice#update', namespace => $namespace );
 	$r->delete("/api/$version/deliveryservices/:id")->over( authenticated => 1 )->to( 'Deliveryservice#delete', namespace => $namespace );
+
+	# get all edge servers associated with a delivery service (from deliveryservice_server table)
+	$r->get( "/api/$version/deliveryservices/:id/servers")->over( authenticated => 1 )->to( 'Server#get_edge_servers_by_dsid', namespace => $namespace );
 
 	# alternate deliveryservice routes
 	$r->get("/api/$version/deliveryservices/list")->over( authenticated => 1 )->to( 'Deliveryservice2#delivery_services', namespace => $namespace );
@@ -576,6 +578,9 @@ sub api_routes {
 	$r->delete("/api/$version/parameters/:id")->over( authenticated => 1 )->to( 'Parameter#delete', namespace => $namespace );
 	$r->post("/api/$version/parameters/validate")->over( authenticated => 1 )->to( 'Parameter#validate', namespace => $namespace );
 
+	# get all profiles associated with a parameter (from profile_parameter table)
+	$r->get( "/api/$version/parameters/:id/profiles")->over( authenticated => 1 )->to( 'Profile#get_profiles_by_paramId', namespace => $namespace );
+
 	# parameters for a profile
 	$r->get( "/api/$version/profiles/:id/parameters" => [ id => qr/\d+/ ] )->over( authenticated => 1 )->to( 'Parameter#get_profile_params', namespace => $namespace );
 	$r->get("/api/$version/profiles/name/:name/parameters")->over( authenticated => 1 )->to( 'Parameter#get_profile_params', namespace => $namespace );
@@ -644,6 +649,9 @@ sub api_routes {
 	$r->put("/api/$version/servers/:id")->over( authenticated => 1 )->to( 'Server#update', namespace => $namespace );
 	$r->delete("/api/$version/servers/:id")->over( authenticated => 1 )->to( 'Server#delete', namespace => $namespace );
 
+	# get all delivery services associated with a server (from deliveryservice_server table)
+	$r->get( "/api/$version/servers/:id/deliveryservices")->over( authenticated => 1 )->to( 'Deliveryservice#get_deliveryservices_by_serverId', namespace => $namespace );
+
 	# alernate server routes
 	$r->post("/api/$version/servers/create")->over( authenticated => 1 )->to( 'Server2#create', namespace => $namespace );
 	$r->put("/api/$version/servers/:id/update")->over( authenticated => 1 )->to( 'Server2#update', namespace => $namespace );
@@ -695,7 +703,10 @@ sub api_routes {
 	$r->get( "/api/$version/users/:id" => [ id => qr/\d+/ ] )->over( authenticated => 1 )->to( 'User#show', namespace => $namespace );
 	$r->put("/api/$version/users/:id")->over( authenticated => 1 )->to( 'User#update', namespace => $namespace );
 
-	# -- USERS: CURRENT USER
+    # get all deliveryservices assigned to a user (from deliveryservice_tmuser table)
+    $r->get( "/api/$version/users/:id/deliveryservices")->over( authenticated => 1 )->to( 'Deliveryservice#get_deliveryservices_by_userId', namespace => $namespace );
+
+    # -- USERS: CURRENT USER
 	$r->get("/api/$version/user/current")->over( authenticated => 1 )->to( 'User#current', namespace => $namespace );
 	$r->post("/api/$version/user/current/update")->over( authenticated => 1 )->to( 'User#update_current', namespace => $namespace );
 
@@ -739,7 +750,7 @@ sub api_routes {
 	# TM Status in use JvD
 	$r->get("/api/$version/traffic_monitor/stats")->over( authenticated => 1 )->to( 'TrafficMonitor#get_host_stats', namespace => $namespace );
 
-	# API HEALTH CHECK
+	# -- Ping API
 	$r->get(
 		"/api/$version/ping" => sub {
 			my $self = shift;

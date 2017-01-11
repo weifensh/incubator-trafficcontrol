@@ -44,19 +44,21 @@ function versionOk() {
 
 # ---------------------------------------
 function getRevCount() {
-	git rev-list HEAD 2>/dev/null | wc -l
+	local buildNum=$(getBuildNumber)
+	echo ${buildNum%.*}
 }
 
 # ---------------------------------------
 function isInGitTree() {
-	git rev-parse --is-inside-work-tree 2>/dev/null
+	# ignore output -- use exit status
+	git rev-parse --is-inside-work-tree >/dev/null 2>&1
 }
 
 # ---------------------------------------
 function getBuildNumber() {
-	local in_git=$(isInGitTree)
-	if [[ $in_git ]]; then
-		local commits=$(getRevCount)
+	local in_git=$()
+	if isInGitTree; then
+		local commits=$(git rev-list HEAD 2>/dev/null | wc -l)
 		local sha=$(git rev-parse --short=8 HEAD)
 		echo "$commits.$sha"
 	else
@@ -84,13 +86,15 @@ function getRhelVersion {
 
 # ---------------------------------------
 function getCommit() {
-	git rev-parse HEAD
+	local buildNum=$(getBuildNumber)
+	echo ${buildNum%.*}
 }
 
 # ---------------------------------------
 function checkEnvironment {
 	export TC_VERSION=$(getVersion "$TC_DIR")
-	export BUILD_NUMBER="${BUILD_NUMBER:-$(getBuildNumber)}.$(getRhelVersion)"
+	export BUILD_NUMBER=$(getBuildNumber)
+	export RHEL_VERSION=$(getRhelVersion)
 	export WORKSPACE=${WORKSPACE:-$TC_DIR}
 	export RPMBUILD="$WORKSPACE/rpmbuild"
 	export DIST="$WORKSPACE/dist"
@@ -112,6 +116,7 @@ function checkEnvironment {
 	echo "=================================================="
 	echo "WORKSPACE: $WORKSPACE"
 	echo "BUILD_NUMBER: $BUILD_NUMBER"
+	echo "RHEL_VERSION: $RHEL_VERSION"
 	echo "TC_VERSION: $TC_VERSION"
 	echo "--------------------------------------------------"
 }
@@ -127,15 +132,16 @@ function createSourceDir() {
 # ---------------------------------------
 function buildRpm () {
 	for package in "$@"; do
-		local rpm="${package}-${TC_VERSION}-${BUILD_NUMBER}.$(uname -m).rpm"
-		local srpm="${package}-${TC_VERSION}-${BUILD_NUMBER}.src.rpm"
+		local pre="${package}-${TC_VERSION}-${BUILD_NUMBER}.${RHEL_VERSION}"
+		local rpm="${pre}.$(uname -m).rpm"
+		local srpm="${pre}.src.rpm"
 		echo "Building the rpm."
 
 		cd "$RPMBUILD" && \
 			rpmbuild --define "_topdir $(pwd)" \
 				 --define "traffic_control_version $TC_VERSION" \
 				 --define "commit $(getCommit)" \
-				 --define "build_number $BUILD_NUMBER" \
+				 --define "build_number $BUILD_NUMBER.$RHEL_VERSION" \
 				 -ba SPECS/$package.spec || \
 				 { echo "RPM BUILD FAILED: $?"; exit 1; }
 
@@ -153,17 +159,16 @@ function buildRpm () {
 # ---------------------------------------
 function createTarball() {
 	local projDir=$(cd "$1"; pwd)
-	local projName=$(basename $projDir)
+	local projName=trafficcontrol-incubating
 	local version=$(getVersion "$TC_DIR")
-	local buildNum=$(getBuildNumber)
-	local tarball="dist/$projName-$version.$buildNum.tar.gz"
+	local tarball="dist/$projName-$version.tar.gz"
 
 	# Create a BULDNUMBER file and add to tarball
 	local bndir=$(mktemp -d)
-        echo "$buildNum" >"$bndir/BUILD_NUMBER"
+        getBuildNumber >"$bndir/BUILD_NUMBER"
 
         # create the tarball only from files in repo and BUILD_NUMBER
-        tar -czf "$tarball" -C "$bndir" BUILD_NUMBER -C "$projDir" --exclude-vcs --transform "s@^@$projName/@" $(git ls-files)
+        tar -czf "$tarball" -C "$bndir" BUILD_NUMBER -C "$projDir" --exclude-vcs --transform "s@^@$projName-$version/@" $(git ls-files)
         rm -r "$bndir"
         echo "$tarball"
 }

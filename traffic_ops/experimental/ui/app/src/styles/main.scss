@@ -1,3 +1,19 @@
+/*
+
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+*/
 @charset "utf-8";
 
 $fa-font-path: "../assets/fonts";
@@ -28,7 +44,7 @@ $fa-font-path: "../assets/fonts";
 // admin
 @import "../modules/private/admin/admin";
 @import "../modules/private/admin/divisions/divisions";
-@import "../modules/private/admin/locations/locations";
+@import "../modules/private/admin/physLocations/physLocations";
 @import "../modules/private/admin/regions/regions";
 @import "../modules/private/admin/tenants/tenants";
 @import "../modules/private/admin/users/users";
@@ -88,6 +104,11 @@ body.nav-sm .container.body .main-content {
   a {
     color: white;
   }
+}
+
+.dropdown-menu-right {
+  left: auto !important; // Reset the default from `.dropdown-menu`
+  right: 0 !important;
 }
 
 .input-error {
@@ -661,6 +682,11 @@ h2 {
   button {
     margin: 8px 6px 4px 0;
   }
+
+  .btn-group {
+    margin-top: -4px;
+  }
+
 }
 
 .x_title .filter {
@@ -6058,4 +6084,3 @@ ul.notifications {
 }
 
 // end loading bar css
-

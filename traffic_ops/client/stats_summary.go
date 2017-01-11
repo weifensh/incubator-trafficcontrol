@@ -20,7 +20,6 @@ import (
 
 // StatsSummaryResponse ...
 type StatsSummaryResponse struct {
-	Version  string         `json:"version"`
 	Response []StatsSummary `json:"response"`
 }
 
@@ -118,6 +117,7 @@ func (to *Session) AddSummaryStats(statsSummary StatsSummary) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		err := fmt.Errorf("Response code = %s and Status = %s", strconv.Itoa(resp.StatusCode), resp.Status)
 		return err

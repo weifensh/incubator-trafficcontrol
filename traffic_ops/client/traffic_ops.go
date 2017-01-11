@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
 	"strings"
 	"time"
 
+	"github.com/juju/persistent-cookiejar"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -52,8 +52,7 @@ func (e *HTTPError) Error() string {
 
 // Result {"response":[{"level":"success","text":"Successfully logged in."}],"version":"1.1"}
 type Result struct {
-	Alerts  []Alert
-	Version string `json:"version"`
+	Alerts []Alert
 }
 
 // Alert ...
@@ -90,6 +89,40 @@ func loginCreds(toUser string, toPasswd string) ([]byte, error) {
 		return nil, err
 	}
 	return js, nil
+}
+
+func ResumeSession(toURL string, insecure bool) (*Session, error) {
+	options := cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	}
+
+	jar, err := cookiejar.New(&options)
+
+	if err != nil {
+		return nil, err
+	}
+
+	to := Session{
+		UserAgent: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+			},
+			Jar: jar,
+		},
+		URL:   toURL,
+		Cache: make(map[string]CacheEntry),
+	}
+
+	resp, err := to.request("GET", "/api/1.2/user/current.json", nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	jar.Save()
+	fmt.Printf("Traffic Ops Session Resumed (%s)\n", resp.Status)
+
+	return &to, nil
 }
 
 // Login to traffic_ops, the response should set the cookie for this session
@@ -149,6 +182,8 @@ func Login(toURL string, toUser string, toPasswd string, insecure bool) (*Sessio
 		return nil, err
 	}
 
+	jar.Save()
+
 	return &to, nil
 }
 
@@ -159,14 +194,14 @@ func (to *Session) request(method, path string, body []byte) (*http.Response, er
 	var req *http.Request
 	var err error
 
-	if body != nil && method != "GET" {
+	if body != nil {
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(body))
 		if err != nil {
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req, err = http.NewRequest("GET", url, nil)
+		req, err = http.NewRequest(method, url, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -22,7 +22,18 @@ under the License.
         <ol class="breadcrumb pull-left">
             <li class="active">Servers</li>
         </ol>
-        <button class="btn btn-primary pull-right" ng-click="createServer()">New</button>
+        <div class="pull-right">
+            <button class="btn btn-primary" ng-click="createServer()"><i class="fa fa-plus"></i>&nbsp;&nbsp; Create Server</button>
+            <div class="btn-group" role="group" uib-dropdown is-open="more.isopen">
+                <button type="button" class="btn btn-default dropdown-toggle" uib-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+                    More
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu-right dropdown-menu" uib-dropdown-menu>
+                    <li role="menuitem"><a ng-click="uploadServerCSV()">Upload Bulk CSV</a></li>
+                </ul>
+            </div>
+        </div>
         <div class="clearfix"></div>
     </div>
     <div class="x_content">
@@ -30,11 +41,12 @@ under the License.
         <table id="serversTable" class="table responsive-utilities jambo_table">
             <thead>
             <tr class="headings">
-                <th>id</th>
+                <th>Update?</th>
                 <th>hostName</th>
                 <th>domainName</th>
                 <th>cdn</th>
                 <th>cachegroup</th>
+                <th>type</th>
                 <th>location</th>
                 <th>ipAddress</th>
                 <th>ip6Address</th>
@@ -45,12 +57,13 @@ under the License.
             </tr>
             </thead>
             <tbody>
-            <tr ng-click="editServer(server.id)" ng-repeat="server in servers">
-                <td>{{server.id}}</td>
+            <tr ng-click="editServer(server.id)" ng-repeat="server in servers" ng-class="{'active': server.updPending}">
+                <td>{{server.updPending}}</td>
                 <td>{{server.hostName}}</td>
                 <td>{{server.domainName}}</td>
                 <td>{{server.cdnName}}</td>
                 <td>{{server.cachegroup}}</td>
+                <td>{{server.type}}</td>
                 <td>{{server.physLocation}}</td>
                 <td>{{server.ipAddress}}</td>
                 <td>{{server.ip6Address}}</td>

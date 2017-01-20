@@ -22,18 +22,20 @@ package cache
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/common/log"
-	dsdata "github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/deliveryservicedata"
-	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/enum"
-	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/peer"
-	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/srvhttp"
-	todata "github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/trafficopsdata"
 	"io"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/common/log"
+	dsdata "github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/deliveryservicedata"
+	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/enum"
+	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/peer"
+	"github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/srvhttp"
+	todata "github.com/apache/incubator-trafficcontrol/traffic_monitor/experimental/traffic_monitor/trafficopsdata"
+	to "github.com/apache/incubator-trafficcontrol/traffic_ops/client"
 )
 
 // Handler is a cache handler, which fulfills the common/handler `Handler` interface.
@@ -68,6 +70,7 @@ type PrecomputedData struct {
 	MaxKbps              int64
 	Errors               []error
 	Reporting            bool
+	Time                 time.Time
 }
 
 // Result is the data result returned by a cache.
@@ -102,7 +105,7 @@ type Stat struct {
 // Stats is designed for returning via the API. It contains result history for each cache, as well as common API data.
 type Stats struct {
 	srvhttp.CommonAPIData
-	Caches map[enum.CacheName]map[string][]Stat `json:"caches"`
+	Caches map[enum.CacheName]map[string][]ResultStatVal `json:"caches"`
 }
 
 // Filter filters whether stats and caches should be returned from a data set.
@@ -112,47 +115,178 @@ type Filter interface {
 	WithinStatHistoryMax(int) bool
 }
 
+const nsPerMs = 1000000
+
 // StatsMarshall encodes the stats in JSON, encoding up to historyCount of each stat. If statsToUse is empty, all stats are encoded; otherwise, only the given stats are encoded. If wildcard is true, stats which contain the text in each statsToUse are returned, instead of exact stat names. If cacheType is not CacheTypeInvalid, only stats for the given type are returned. If hosts is not empty, only the given hosts are returned.
-func StatsMarshall(statHistory map[enum.CacheName][]Result, filter Filter, params url.Values) ([]byte, error) {
+func StatsMarshall(statResultHistory ResultStatHistory, statInfo ResultInfoHistory, combinedStates peer.Crstates, monitorConfig to.TrafficMonitorConfigMap, statMaxKbpses Kbpses, filter Filter, params url.Values) ([]byte, error) {
 	stats := Stats{
 		CommonAPIData: srvhttp.GetCommonAPIData(params, time.Now()),
-		Caches:        map[enum.CacheName]map[string][]Stat{},
+		Caches:        map[enum.CacheName]map[string][]ResultStatVal{},
 	}
 
 	// TODO in 1.0, stats are divided into 'location', 'cache', and 'type'. 'cache' are hidden by default.
 
-	for id, history := range statHistory {
+	for id, history := range statResultHistory {
 		if !filter.UseCache(id) {
 			continue
 		}
-		historyCount := 1
-		for _, result := range history {
-			if !filter.WithinStatHistoryMax(historyCount) {
-				break
+		for stat, vals := range history {
+			stat = "ats." + stat // TM1 prefixes ATS stats with 'ats.'
+			if !filter.UseStat(stat) {
+				continue
 			}
-			historyCount++
-			for stat, value := range result.Astats.Ats {
-				stat = "ats." + stat // TM 1.0 prefixes ATS stats with 'ats.'
-				if !filter.UseStat(stat) {
-					continue
+			historyCount := 1
+			for _, val := range vals {
+				if !filter.WithinStatHistoryMax(historyCount) {
+					break
 				}
-				s := Stat{
-					Time:  result.Time.UnixNano() / 1000000,
-					Value: value,
+				if _, ok := stats.Caches[id]; !ok {
+					stats.Caches[id] = map[string][]ResultStatVal{}
 				}
-
-				_, exists := stats.Caches[id]
-
-				if !exists {
-					stats.Caches[id] = map[string][]Stat{}
-				}
-
-				stats.Caches[id][stat] = append(stats.Caches[id][stat], Stat{Time: s.Time, Value: fmt.Sprintf("%v", s.Value)}) // convert stats to strings, for the TM1.0 /publish/CacheStats API
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], val)
+				historyCount += int(val.Span)
 			}
 		}
 	}
 
+	for id, infos := range statInfo {
+		if !filter.UseCache(id) {
+			continue
+		}
+		for i, info := range infos {
+			if !filter.WithinStatHistoryMax(i + 1) {
+				break
+			}
+			if _, ok := stats.Caches[id]; !ok {
+				stats.Caches[id] = map[string][]ResultStatVal{}
+			}
+
+			t := info.Time
+
+			if stat := "availableBandwidthInKbps"; filter.UseStat(stat) {
+				v := info.Vitals.MaxKbpsOut - info.Vitals.KbpsOut
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "availableBandwidthInMbps"; filter.UseStat(stat) {
+				v := (info.Vitals.MaxKbpsOut - info.Vitals.KbpsOut) / 1000
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "bandwidth"; filter.UseStat(stat) {
+				v := info.Vitals
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "error-string"; filter.UseStat(stat) {
+				v := ""
+				if info.Error != nil {
+					v = info.Error.Error()
+				} else {
+					v = "false"
+				}
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "isAvailable"; filter.UseStat(stat) {
+				v := combinedStates.Caches[id].IsAvailable // if the cache is missing, default to false
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "isHealthy"; filter.UseStat(stat) {
+				adminDown := false
+				if srv, ok := monitorConfig.TrafficServer[string(id)]; ok && enum.CacheStatusFromString(srv.Status) == enum.CacheStatusAdminDown {
+					adminDown = true
+				}
+				v := !adminDown && combinedStates.Caches[id].IsAvailable // if the cache is missing, default to false
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "kbps"; filter.UseStat(stat) {
+				v := info.Vitals.KbpsOut
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "loadAvg"; filter.UseStat(stat) {
+				v := info.Vitals.LoadAvg
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "maxKbps"; filter.UseStat(stat) {
+				v := info.Vitals.MaxKbpsOut
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "queryTime"; filter.UseStat(stat) {
+				v := fmt.Sprintf("%d", info.RequestTime.Nanoseconds()/nsPerMs)
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "stateUrl"; filter.UseStat(stat) {
+				v, err := getHealthPollingURL(id, monitorConfig)
+				if err != nil {
+					v = fmt.Sprintf("ERROR: %v", err) // should never happen
+				}
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "status"; filter.UseStat(stat) {
+				v := ""
+				srv, ok := monitorConfig.TrafficServer[string(id)]
+				if !ok {
+					v = fmt.Sprintf("ERROR: cache not found in monitor config") // should never happen
+				}
+				v = srv.Status
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.astatsLoad"; filter.UseStat(stat) {
+				v := info.System.AstatsLoad
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.configReloadRequests"; filter.UseStat(stat) {
+				v := info.System.ConfigLoadRequest
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.configReloads"; filter.UseStat(stat) {
+				v := info.System.ConfigReloads
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.inf.name"; filter.UseStat(stat) {
+				v := info.System.InfName
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.inf.speed"; filter.UseStat(stat) {
+				v := info.System.InfSpeed
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.lastReload"; filter.UseStat(stat) {
+				v := info.System.LastReload
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.lastReloadRequest"; filter.UseStat(stat) {
+				v := info.System.LastReloadRequest
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.proc.loadavg"; filter.UseStat(stat) {
+				v := info.System.ProcLoadavg
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+			if stat := "system.proc.net.dev"; filter.UseStat(stat) {
+				v := info.System.ProcNetDev
+				stats.Caches[id][stat] = append(stats.Caches[id][stat], ResultStatVal{Val: v, Time: t, Span: 1})
+			}
+		}
+	}
 	return json.Marshal(stats)
+}
+
+func getHealthPollingURL(cache enum.CacheName, monitorConfig to.TrafficMonitorConfigMap) (string, error) {
+	srv, ok := monitorConfig.TrafficServer[string(cache)]
+	if !ok {
+		return "", fmt.Errorf("server not found in monitor config from Traffic Ops")
+	}
+	url := monitorConfig.Profile[srv.Profile].Parameters.HealthPollingURL
+	if url == "" {
+		return "", fmt.Errorf("health polling URL not found in monitor config from Traffic Ops")
+	}
+
+	// TODO abstract replacer, remove duplication with manager/monitorconfig.go
+	url = strings.NewReplacer(
+		"${hostname}", srv.IP,
+		"${interface_name}", srv.InterfaceName,
+		"application=system", "application=plugin.remap",
+		"application=", "application=plugin.remap",
+	).Replace(url)
+	return url, nil
 }
 
 // Handle handles results fetched from a cache, parsing the raw Reader data and passing it along to a chan for further processing.
@@ -181,6 +315,7 @@ func (handler Handler) Handle(id string, r io.Reader, reqTime time.Duration, req
 	}
 
 	result.PrecomputedData.Reporting = true
+	result.PrecomputedData.Time = result.Time
 
 	if decodeErr := json.NewDecoder(r).Decode(&result.Astats); decodeErr != nil {
 		log.Errorf("%s procnetdev decode error '%v'\n", id, decodeErr)
@@ -242,6 +377,7 @@ func outBytes(procNetDev, iface string, multipleSpaceRegex *regexp.Regexp) (int6
 }
 
 // precompute does the calculations which are possible with only this one cache result.
+// TODO precompute ResultStatVal
 func (handler Handler) precompute(result Result) Result {
 	todata := handler.ToData.Get()
 	stats := map[enum.DeliveryServiceName]dsdata.Stat{}

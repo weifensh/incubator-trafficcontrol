@@ -335,6 +335,15 @@ sub process_cfg_file {
 		&adv_processing_ssl( \@db_file_lines );
 	}
 
+	# chown to ats.ats for files except those in ssl/
+	if ( $file !~ m/\.(key|cer)$/ ) {
+		open my $fh, '+<', $file || die "Can't open $cfg_file for chowning!\n";
+		chmod oct(644), $fh;
+		chown $ats_uid, $ats_uid, $fh;
+		close $fh;
+		( $log_level >> $TRACE ) && print "TRACE Change owner to ats for $cfg_file\n";
+	}
+
 	( $log_level >> $INFO )
 		&& print "INFO: ======== End processing config file: $cfg_file for service: " . $cfg_file_tracker->{$cfg_file}->{'service'} . " ========\n";
 	$cfg_file_tracker->{$cfg_file}->{'audit_complete'}++;

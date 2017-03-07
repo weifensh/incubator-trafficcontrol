@@ -376,9 +376,6 @@ sub api_routes {
 	my $version   = shift;
 	my $namespace = shift;
 
-	# -- API DOCS
-	$r->get("/api/$version/docs")->to( 'ApiDocs#index', namespace => $namespace );
-
 	# -- ASNS (CRANS)
 	$r->get("/api/1.1/asns")->over( authenticated => 1 )->to( 'Asn#v11_index', namespace => $namespace );
 	$r->get("/api/1.2/asns")->over( authenticated => 1 )->to( 'Asn#index',     namespace => $namespace );
@@ -421,6 +418,9 @@ sub api_routes {
 	$r->post("/api/$version/cdns")->over( authenticated => 1 )->to( 'Cdn#create', namespace => $namespace );
 	$r->put("/api/$version/cdns/:id")->over( authenticated => 1 )->to( 'Cdn#update', namespace => $namespace );
 	$r->delete("/api/$version/cdns/:id")->over( authenticated => 1 )->to( 'Cdn#delete', namespace => $namespace );
+
+	# -- CDNS: QUEUE UPDATES
+	$r->post("/api/$version/cdns/:id/queue_update")->over( authenticated => 1 )->to( 'Cdn#queue_updates', namespace => $namespace );
 
 	# -- CDNS: HEALTH
 	$r->get("/api/$version/cdns/health")->over( authenticated => 1 )->to( 'Cdn#health', namespace => $namespace );
@@ -470,6 +470,12 @@ sub api_routes {
 	$r->get("/api/$version/logs")->over( authenticated => 1 )->to( 'ChangeLog#index', namespace => $namespace );
 	$r->get("/api/$version/logs/:days/days")->over( authenticated => 1 )->to( 'ChangeLog#index', namespace => $namespace );
 	$r->get("/api/$version/logs/newcount")->over( authenticated => 1 )->to( 'ChangeLog#newlogcount', namespace => $namespace );
+
+	# -- CONFIG FILES
+	$r->get("/api/$version/server/#id/configfiles/ats")->over( authenticated => 1 )->to ( 'ApacheTrafficServer#get_config_metadata', namespace => 'API::Configs' );
+	$r->get("/api/$version/profile/#id/configfiles/ats/#filename")->over( authenticated => 1 )->to ( 'ApacheTrafficServer#get_profile_config', namespace => 'API::Configs' );
+	$r->get("/api/$version/server/#id/configfiles/ats/#filename")->over( authenticated => 1 )->to ( 'ApacheTrafficServer#get_server_config', namespace => 'API::Configs' );
+	$r->get("/api/$version/cdn/#id/configfiles/ats/#filename")->over( authenticated => 1 )->to ( 'ApacheTrafficServer#get_cdn_config', namespace => 'API::Configs' );
 
 	# -- DELIVERYSERVICES
 	# -- DELIVERYSERVICES: CRUD
@@ -537,7 +543,12 @@ sub api_routes {
 		->to( 'KeysUrlSig#view_by_xmlid', namespace => 'API::DeliveryService' );
 
 	# -- DELIVERY SERVICE: REGEXES
-	$r->get("/api/$version/deliveryservices_regexes")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#index', namespace => $namespace );
+	$r->get("/api/$version/deliveryservices_regexes")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#all', namespace => $namespace );
+	$r->get("/api/$version/deliveryservices/:dsId/regexes")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#index', namespace => $namespace );
+	$r->get("/api/$version/deliveryservices/:dsId/regexes/:id")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#show', namespace => $namespace );
+	$r->post("/api/$version/deliveryservices/:dsId/regexes")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#create', namespace => $namespace );
+	$r->put("/api/$version/deliveryservices/:dsId/regexes/:id")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#update', namespace => $namespace );
+	$r->delete("/api/$version/deliveryservices/:dsId/regexes/:id")->over( authenticated => 1 )->to( 'DeliveryServiceRegexes#delete', namespace => $namespace );
 
 	# -- DELIVERY SERVICE: MATCHES
 	$r->get("/api/$version/deliveryservice_matches")->over( authenticated => 1 )->to( 'DeliveryServiceMatches#index', namespace => $namespace );

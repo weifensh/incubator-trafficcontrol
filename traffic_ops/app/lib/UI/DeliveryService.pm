@@ -78,7 +78,8 @@ sub get_cdn_domain {
 			distinct => 1
 		}
 	)->get_column('value')->single();
-	return $cdn_domain;
+	# Always return a lowercase FQDN.
+	return lc($cdn_domain);
 }
 
 sub get_example_urls {
@@ -587,6 +588,7 @@ sub header_rewrite {
 			$insert->insert();
 			$param_id = $insert->id;
 		}
+
 		my $cdn_name = undef;
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		if ( $tier eq "mid" ) {
@@ -651,6 +653,7 @@ sub regex_remap {
 			$insert->insert();
 			$param_id = $insert->id;
 		}
+
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
 		foreach my $profile_id (@profiles) {
@@ -697,6 +700,7 @@ sub cacheurl {
 			$insert->insert();
 			$param_id = $insert->id;
 		}
+
 		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
 		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
 		foreach my $profile_id (@profiles) {
@@ -713,6 +717,51 @@ sub cacheurl {
 	}
 	else {
 		&delete_cfg_file( $self, "cacheurl_" . $ds_name . ".config" );   # don't change it to $self->delete_header_rewrite(), calling from other pm is wonky
+	}
+}
+
+sub url_sig {
+	my $self       = shift;
+	my $ds_id      = shift;
+	my $ds_profile = shift;
+	my $ds_name    = shift;
+	my $signed    = shift;
+
+	if ( defined($signed) && $signed == 1 ) {
+		my $fname = "url_sig_" . $ds_name . ".config";
+		my $ats_cfg_loc =
+			$self->db->resultset('Parameter')->search( { -and => [ name => 'location', config_file => 'remap.config' ] } )->get_column('value')->single();
+		$ats_cfg_loc =~ s/\/$//;
+
+		my $param_id = $self->db->resultset('Parameter')->search( { -and => [ name => 'location', config_file => $fname ] } )->get_column('id')->single();
+		if ( !defined($param_id) ) {
+			my $insert = $self->db->resultset('Parameter')->create(
+				{
+					config_file => $fname,
+					name        => 'location',
+					value       => $ats_cfg_loc
+				}
+			);
+			$insert->insert();
+			$param_id = $insert->id;
+		}
+
+		my @servers = $self->db->resultset('DeliveryserviceServer')->search( { deliveryservice => $ds_id } )->get_column('server')->all();
+		my @profiles = $self->db->resultset('Server')->search( { id => { -in => \@servers } } )->get_column('profile')->all();
+		foreach my $profile_id (@profiles) {
+			my $link = $self->db->resultset('ProfileParameter')->search( { profile => $profile_id, parameter => $param_id } )->single();
+			if ( !defined($link) ) {
+				my $insert = $self->db->resultset('ProfileParameter')->create(
+					{
+						profile   => $profile_id,
+						parameter => $param_id
+					}
+				);
+			}
+		}
+	}
+	else {
+		&delete_cfg_file( $self, "url_sig_" . $ds_name . ".config" );   # don't change it to $self->delete_header_rewrite(), calling from other pm is wonky
 	}
 }
 
@@ -893,6 +942,7 @@ sub update {
 		);
 		$self->regex_remap( $self->param('id'), $self->param('ds.profile'), $self->param('ds.xml_id'), $self->param('ds.regex_remap') );
 		$self->cacheurl( $self->param('id'), $self->param('ds.profile'), $self->param('ds.xml_id'), $self->param('ds.cacheurl') );
+		$self->url_sig( $self->param('id'), $self->param('ds.profile'), $self->param('ds.xml_id'), $self->param('ds.signed') );
 
 		$self->flash( message => "Delivery service updated!" );
 		return $self->redirect_to( '/ds/' . $id );
@@ -1122,20 +1172,20 @@ sub create_dnssec_keys {
 
 	#get default expiration days and ttl for DSs from CDN record to use when generating new keys
 	my $cdn_ksk = $keys->{$cdn_name}->{ksk};
-	my $k_exp_days = $self->get_key_expiration_days( $cdn_ksk, "365" );
+	my $k_exp_days = get_key_expiration_days( $cdn_ksk, "365" );
 
 	my $cdn_zsk = $keys->{$cdn_name}->{zsk};
-	my $z_exp_days = $self->get_key_expiration_days( $cdn_zsk, "30" );
+	my $z_exp_days = get_key_expiration_days( $cdn_zsk, "30" );
 
-	my $dnskey_ttl = $self->get_key_ttl( $cdn_ksk, "60" );
+	my $dnskey_ttl = get_key_ttl( $cdn_ksk, "60" );
 
 	#create the ds domain name for dnssec keys
-	my $domain_name             = $self->get_cdn_domain($ds_id);
-	my $deliveryservice_regexes = $self->get_regexp_set($ds_id);
+	my $domain_name             = get_cdn_domain($self, $ds_id);
+	my $deliveryservice_regexes = get_regexp_set($self, $ds_id);
 	my $rs_ds =
 		$self->db->resultset('Deliveryservice')->search( { 'me.xml_id' => $xml_id }, { prefetch => [ { 'type' => undef }, { 'profile' => undef } ] } );
 	my $data = $rs_ds->single;
-	my @example_urls = UI::DeliveryService::get_example_urls( $self, $ds_id, $deliveryservice_regexes, $data, $domain_name, $data->protocol );
+	my @example_urls = get_example_urls( $self, $ds_id, $deliveryservice_regexes, $data, $domain_name, $data->protocol );
 
 	#first one is the one we want.  period at end for dnssec, substring off stuff we dont want
 	my $ds_name = $example_urls[0] . ".";
@@ -1161,7 +1211,6 @@ sub create_dnssec_keys {
 }
 
 sub get_key_expiration_days {
-	my $self        = shift;
 	my $keys        = shift;
 	my $default_exp = shift;
 	foreach my $key (@$keys) {
@@ -1176,7 +1225,6 @@ sub get_key_expiration_days {
 }
 
 sub get_key_ttl {
-	my $self = shift;
 	my $keys = shift;
 	my $ttl  = shift;
 

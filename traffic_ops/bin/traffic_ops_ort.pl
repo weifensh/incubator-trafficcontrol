@@ -1235,6 +1235,7 @@ sub replace_cfg_file {
 			. $cfg_file_tracker->{$cfg_file}->{'location'}
 			. "/$cfg_file\n";
 		system("/bin/cp $cfg_file_tracker->{$cfg_file}->{'backup_from_trops'} $cfg_file_tracker->{$cfg_file}->{'location'}/$cfg_file");
+		chown $ats_uid, $ats_uid, $cfg_file_tracker->{$cfg_file}->{'location'}/$cfg_file";
 		$cfg_file_tracker->{$cfg_file}->{'change_applied'}++;
 		( $log_level >> $TRACE ) && print "TRACE Setting change applied for $cfg_file.\n";
 		$return_code = $CFG_FILE_CHANGED;
@@ -2165,12 +2166,7 @@ sub set_url {
 
 	return if (!defined($cfg_file_tracker->{$filename}->{'fname-in-TO'}));
 
-	if ( $filename ne "regex_revalidate.config" ) {
-		return "$traffic_ops_host\/genfiles\/view\/$hostname_short\/" . $cfg_file_tracker->{$filename}->{'fname-in-TO'};
-	}
-	else {
-		return "$traffic_ops_host\/Trafficserver-Snapshots\/$my_cdn_name\/" . $cfg_file_tracker->{$filename}->{'fname-in-TO'};
-	}
+	return "$traffic_ops_host\/genfiles\/view\/$hostname_short\/" . $cfg_file_tracker->{$filename}->{'fname-in-TO'};
 }
 
 sub scrape_unencode_text {

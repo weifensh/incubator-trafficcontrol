@@ -20,11 +20,14 @@
 package datareq
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/common/log"
 	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/config"
@@ -111,7 +114,7 @@ func MakeDispatchMap(
 			return srvAPITrafficOpsURI(opsConfig)
 		}, ContentTypeJSON)),
 		"/api/cache-statuses": wrap(WrapErr(errorCount, func() ([]byte, error) {
-			return srvAPICacheStates(toData, statInfoHistory, statResultHistory, healthHistory, lastHealthDurations, localStates, lastStats, localCacheStatus, statMaxKbpses)
+			return srvAPICacheStates(toData, statInfoHistory, statResultHistory, healthHistory, lastHealthDurations, localStates, lastStats, localCacheStatus, statMaxKbpses, monitorConfig)
 		}, ContentTypeJSON)),
 		"/api/bandwidth-kbps": wrap(WrapBytes(func() []byte {
 			return srvAPIBandwidthKbps(toData, lastStats)
@@ -157,8 +160,20 @@ func WrapErrCode(errorCount threadsafe.Uint, reqPath string, body []byte, err er
 // WrapBytes takes a function which cannot error and returns only bytes, and wraps it as a http.HandlerFunc. The errContext is logged if the write fails, and should be enough information to trace the problem (function name, endpoint, request parameters, etc).
 func WrapBytes(f func() []byte, contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		bytes := f()
+		bytes, err := gzipIfAccepts(r, w, bytes)
+		if err != nil {
+			log.Errorf("gzipping request '%v': %v\n", r.URL.EscapedPath(), err)
+			code := http.StatusInternalServerError
+			w.WriteHeader(code)
+			if _, err := w.Write([]byte(http.StatusText(code))); err != nil {
+				log.Warnf("received error writing data request %v: %v\n", r.URL.EscapedPath(), err)
+			}
+			return
+		}
+
 		w.Header().Set("Content-Type", contentType)
-		log.Write(w, f(), r.URL.EscapedPath())
+		log.Write(w, bytes, r.URL.EscapedPath())
 	}
 }
 
@@ -166,7 +181,13 @@ func WrapBytes(f func() []byte, contentType string) http.HandlerFunc {
 func WrapErr(errorCount threadsafe.Uint, f func() ([]byte, error), contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bytes, err := f()
-		_, code := WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		code := http.StatusOK
+		if err != nil {
+			bytes, code = WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		} else {
+			bytes, err = gzipIfAccepts(r, w, bytes)
+			bytes, code = WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		}
 		w.Header().Set("Content-Type", contentType)
 		w.WriteHeader(code)
 		log.Write(w, bytes, r.URL.EscapedPath())
@@ -182,17 +203,30 @@ type SrvFunc func(params url.Values, path string) ([]byte, int)
 func WrapParams(f SrvFunc, contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bytes, code := f(r.URL.Query(), r.URL.EscapedPath())
-		if len(bytes) > 0 {
-			w.Header().Set("Content-Type", contentType)
+		if len(bytes) == 0 {
+			code := http.StatusInternalServerError
 			w.WriteHeader(code)
-			if _, err := w.Write(bytes); err != nil {
+			if _, err := w.Write([]byte(http.StatusText(code))); err != nil {
 				log.Warnf("received error writing data request %v: %v\n", r.URL.EscapedPath(), err)
 			}
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			if _, err := w.Write([]byte("Internal Server Error")); err != nil {
+			return
+		}
+
+		bytes, err := gzipIfAccepts(r, w, bytes)
+		if err != nil {
+			log.Errorf("gzipping '%v': %v\n", r.URL.EscapedPath(), err)
+			code := http.StatusInternalServerError
+			w.WriteHeader(code)
+			if _, err := w.Write([]byte(http.StatusText(code))); err != nil {
 				log.Warnf("received error writing data request %v: %v\n", r.URL.EscapedPath(), err)
 			}
+			return
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.WriteHeader(code)
+		if _, err := w.Write(bytes); err != nil {
+			log.Warnf("received error writing data request %v: %v\n", r.URL.EscapedPath(), err)
 		}
 	}
 }
@@ -200,28 +234,47 @@ func WrapParams(f SrvFunc, contentType string) http.HandlerFunc {
 func WrapAgeErr(errorCount threadsafe.Uint, f func() ([]byte, time.Time, error), contentType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bytes, contentTime, err := f()
-		_, code := WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		code := http.StatusOK
+		if err != nil {
+			bytes, code = WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		} else {
+			bytes, err = gzipIfAccepts(r, w, bytes)
+			bytes, code = WrapErrCode(errorCount, r.URL.EscapedPath(), bytes, err)
+		}
+
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Age", fmt.Sprintf("%.0f", time.Since(contentTime).Seconds()))
 		w.WriteHeader(code)
+
 		log.Write(w, bytes, r.URL.EscapedPath())
 	}
 }
 
-// WrapUnpolledCheck wraps an http.HandlerFunc, returning ServiceUnavailable if any caches are unpolled; else, calling the wrapped func.
+// WrapUnpolledCheck wraps an http.HandlerFunc, returning ServiceUnavailable if all caches have't been polled; else, calling the wrapped func. Once all caches have been polled, we never return a 503 again, even if the CRConfig has been changed and new, unpolled caches exist. This is because, before those new caches existed in the CRConfig, they weren't being routed to, so it doesn't break anything to continue not routing to them until they're polled, while still serving polled caches as available. Whereas, on startup, if we were to return data with some caches unpolled, we would be telling clients that existing, potentially-available caches are unavailable, simply because we hadn't polled them yet.
 func wrapUnpolledCheck(unpolledCaches threadsafe.UnpolledCaches, errorCount threadsafe.Uint, f http.HandlerFunc) http.HandlerFunc {
+	polledAll := false
 	return func(w http.ResponseWriter, r *http.Request) {
-		if unpolledCaches.Any() {
+		if !polledAll && unpolledCaches.Any() {
 			HandleErr(errorCount, r.URL.EscapedPath(), fmt.Errorf("service still starting, some caches unpolled: %v", unpolledCaches.UnpolledCaches()))
 			w.WriteHeader(http.StatusServiceUnavailable)
 			log.Write(w, []byte("Service Unavailable"), r.URL.EscapedPath())
 			return
 		}
+		polledAll = true
 		f(w, r)
 	}
 }
 
 const ContentTypeJSON = "application/json"
+
+func stripAllWhitespace(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, s)
+}
 
 // addTrailingEndpoints adds endpoints with trailing slashes to the given dispatch map. Without this, Go will match `route` and `route/` differently.
 func addTrailingSlashEndpoints(dispatchMap map[string]http.HandlerFunc) map[string]http.HandlerFunc {
@@ -232,4 +285,40 @@ func addTrailingSlashEndpoints(dispatchMap map[string]http.HandlerFunc) map[stri
 		dispatchMap[route+"/"] = handler
 	}
 	return dispatchMap
+}
+
+func acceptsGzip(r *http.Request) bool {
+	encodingHeaders := r.Header["Accept-Encoding"] // headers are case-insensitive, but Go promises to Canonical-Case requests
+	for _, encodingHeader := range encodingHeaders {
+		encodingHeader = stripAllWhitespace(encodingHeader)
+		encodings := strings.Split(encodingHeader, ",")
+		for _, encoding := range encodings {
+			if strings.ToLower(encoding) == "gzip" { // encoding is case-insensitive, per the RFC
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// gzipIfAccepts gzips the given bytes, writes a `Content-Encoding: gzip` header to the given writer, and returns the gzipped bytes, if the Request supports GZip (has an Accept-Encoding header). Else, returns the bytes unmodified. Note the given bytes are NOT written to the given writer. It is assumed the bytes may need to pass thru other middleware before being written.
+func gzipIfAccepts(r *http.Request, w http.ResponseWriter, b []byte) ([]byte, error) {
+	// TODO this could be made more efficient by wrapping ResponseWriter with the GzipWriter, and letting callers writer directly to it - but then we'd have to deal with Closing the gzip.Writer.
+	if len(b) == 0 || !acceptsGzip(r) {
+		return b, nil
+	}
+	w.Header().Set("Content-Encoding", "gzip")
+
+	buf := bytes.Buffer{}
+	zw := gzip.NewWriter(&buf)
+
+	if _, err := zw.Write(b); err != nil {
+		return nil, fmt.Errorf("gzipping bytes: %v")
+	}
+
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("closing gzip writer: %v")
+	}
+
+	return buf.Bytes(), nil
 }

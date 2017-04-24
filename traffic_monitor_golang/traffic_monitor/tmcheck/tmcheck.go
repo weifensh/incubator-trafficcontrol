@@ -29,6 +29,8 @@ import (
 	"time"
 
 	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/crconfig"
+	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/datareq"
+	dsdata "github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/deliveryservicedata"
 	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/enum"
 	"github.com/apache/incubator-trafficcontrol/traffic_monitor_golang/traffic_monitor/peer"
 	to "github.com/apache/incubator-trafficcontrol/traffic_ops/client"
@@ -37,7 +39,9 @@ import (
 const RequestTimeout = time.Second * time.Duration(30)
 
 const TrafficMonitorCRStatesPath = "/publish/CrStates"
+const TrafficMonitorDSStatsPath = "/publish/DsStats"
 const TrafficMonitorConfigDocPath = "/publish/ConfigDoc"
+const TrafficMonitorStatsPath = "/publish/Stats"
 
 func getClient() *http.Client {
 	return &http.Client{
@@ -87,53 +91,63 @@ func GetCRStates(uri string) (*peer.Crstates, error) {
 	return &states, nil
 }
 
-// ValidateOfflineStates validates that no OFFLINE or ADMIN_DOWN caches in the given Traffic Ops' CRConfig are marked Available in the given Traffic Monitor's CRStates.
-func ValidateOfflineStates(tmURI string, toClient *to.Session) error {
-	cdn, err := GetCDN(tmURI)
+// GetDSStats gets the DSStats from the given Traffic Monitor.
+func GetDSStats(uri string) (*dsdata.StatsOld, error) {
+	resp, err := getClient().Get(uri)
 	if err != nil {
-		return fmt.Errorf("getting CDN from Traffic Monitor: %v", err)
+		return nil, fmt.Errorf("reading reply from %v: %v\n", uri, err)
 	}
-
-	crConfigBytes, err := toClient.CRConfigRaw(cdn)
+	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("getting CRConfig: %v", err)
+		return nil, fmt.Errorf("reading reply from %v: %v\n", uri, err)
 	}
 
-	crConfig := crconfig.CRConfig{}
-	if err := json.Unmarshal(crConfigBytes, &crConfig); err != nil {
-		return fmt.Errorf("unmarshalling CRConfig JSON: %v", err)
+	dsStats := dsdata.StatsOld{}
+	if err := json.Unmarshal(respBytes, &dsStats); err != nil {
+		return nil, fmt.Errorf("unmarshalling: %v", err)
 	}
-
-	crStates, err := GetCRStates(tmURI + TrafficMonitorCRStatesPath)
-	if err != nil {
-		return fmt.Errorf("getting CRStates: %v", err)
-	}
-
-	return ValidateCRStates(crStates, &crConfig)
+	return &dsStats, nil
 }
 
-// ValidateCRStates validates that no OFFLINE or ADMIN_DOWN caches in the given CRConfig are marked Available in the given CRStates.
-func ValidateCRStates(crstates *peer.Crstates, crconfig *crconfig.CRConfig) error {
-	for cacheName, cacheInfo := range crconfig.ContentServers {
-		status := enum.CacheStatusFromString(string(*cacheInfo.Status))
-		if status != enum.CacheStatusOffline || status != enum.CacheStatusOffline {
-			continue
-		}
-
-		available, ok := crstates.Caches[enum.CacheName(cacheName)]
-		if !ok {
-			return fmt.Errorf("Cache %v in CRConfig but not CRStates", cacheName)
-		}
-
-		if available.IsAvailable {
-			return fmt.Errorf("Cache %v is %v in CRConfig, but available in CRStates", cacheName, status)
-		}
-
+// GetStats gets the stats from the given Traffic Monitor.
+func GetStats(uri string) (*datareq.Stats, error) {
+	resp, err := getClient().Get(uri)
+	if err != nil {
+		return nil, fmt.Errorf("reading reply from %v: %v\n", uri, err)
 	}
-	return nil
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading reply from %v: %v\n", uri, err)
+	}
+
+	stats := datareq.JSONStats{}
+	if err := json.Unmarshal(respBytes, &stats); err != nil {
+		return nil, fmt.Errorf("unmarshalling: %v", err)
+	}
+	return &stats.Stats, nil
 }
 
-// Validator is designed to be run as a goroutine, and does not return. It continously validates every `interval`, and calls `onErr` on failure, `onResumeSuccess` when a failure ceases, and `onCheck` on every poll.
+type ValidatorFunc func(
+	tmURI string,
+	toClient *to.Session,
+	interval time.Duration,
+	grace time.Duration,
+	onErr func(error),
+	onResumeSuccess func(),
+	onCheck func(error),
+)
+
+type AllValidatorFunc func(
+	toClient *to.Session,
+	interval time.Duration,
+	includeOffline bool,
+	grace time.Duration,
+	onErr func(enum.TrafficMonitorName, error),
+	onResumeSuccess func(enum.TrafficMonitorName),
+	onCheck func(enum.TrafficMonitorName, error),
+)
+
+// CRStatesOfflineValidator is designed to be run as a goroutine, and does not return. It continously validates every `interval`, and calls `onErr` on failure, `onResumeSuccess` when a failure ceases, and `onCheck` on every poll.
 func Validator(
 	tmURI string,
 	toClient *to.Session,
@@ -142,11 +156,12 @@ func Validator(
 	onErr func(error),
 	onResumeSuccess func(),
 	onCheck func(error),
+	validator func(tmURI string, toClient *to.Session) error,
 ) {
 	invalid := false
 	invalidStart := time.Time{}
 	for {
-		err := ValidateOfflineStates(tmURI, toClient)
+		err := validator(tmURI, toClient)
 
 		if err != nil && !invalid {
 			invalid = true
@@ -169,4 +184,115 @@ func Validator(
 
 		time.Sleep(interval)
 	}
+}
+
+// CRConfigOrError contains a CRConfig or an error. Union types? Monads? What are those?
+type CRConfigOrError struct {
+	CRConfig *crconfig.CRConfig
+	Err      error
+}
+
+func GetMonitors(toClient *to.Session, includeOffline bool) ([]to.Server, error) {
+	trafficMonitorType := "RASCAL"
+	monitorTypeQuery := map[string][]string{"type": []string{trafficMonitorType}}
+	servers, err := toClient.ServersByType(monitorTypeQuery)
+	if err != nil {
+		return nil, fmt.Errorf("getting monitors from Traffic Ops: %v", err)
+	}
+
+	if !includeOffline {
+		servers = FilterOfflines(servers)
+	}
+	return servers, nil
+}
+
+func AllValidator(
+	toClient *to.Session,
+	interval time.Duration,
+	includeOffline bool,
+	grace time.Duration,
+	onErr func(enum.TrafficMonitorName, error),
+	onResumeSuccess func(enum.TrafficMonitorName),
+	onCheck func(enum.TrafficMonitorName, error),
+	validator func(toClient *to.Session, includeOffline bool) (map[enum.TrafficMonitorName]error, error),
+) {
+	invalid := map[enum.TrafficMonitorName]bool{}
+	invalidStart := map[enum.TrafficMonitorName]time.Time{}
+	metaFail := false
+	for {
+		tmErrs, err := validator(toClient, includeOffline)
+		if err != nil {
+			onErr("", fmt.Errorf("Error validating monitors: %v", err))
+			time.Sleep(interval)
+			metaFail = true
+		} else if metaFail {
+			onResumeSuccess("")
+			metaFail = false
+		}
+
+		for name, err := range tmErrs {
+			if err != nil && !invalid[name] {
+				invalid[name] = true
+				invalidStart[name] = time.Now()
+			}
+
+			if err != nil {
+				invalidSpan := time.Now().Sub(invalidStart[name])
+				if invalidSpan > grace {
+					onErr(name, fmt.Errorf("invalid state for %v: %v\n", invalidSpan, err))
+				}
+			}
+
+			onCheck(name, err)
+		}
+
+		for tm, tmInvalid := range invalid {
+			if _, ok := tmErrs[tm]; tmInvalid && !ok {
+				onResumeSuccess(tm)
+				invalid[tm] = false
+			}
+		}
+
+		time.Sleep(interval)
+	}
+}
+
+// FilterOfflines returns only servers which are REPORTED or ONLINE
+func FilterOfflines(servers []to.Server) []to.Server {
+	onlineServers := []to.Server{}
+	for _, server := range servers {
+		status := enum.CacheStatusFromString(server.Status)
+		if status != enum.CacheStatusOnline && status != enum.CacheStatusReported {
+			continue
+		}
+		onlineServers = append(onlineServers, server)
+	}
+	return onlineServers
+}
+
+func GetCDNs(servers []to.Server) map[enum.CDNName]struct{} {
+	cdns := map[enum.CDNName]struct{}{}
+	for _, server := range servers {
+		cdns[enum.CDNName(server.CDNName)] = struct{}{}
+	}
+	return cdns
+}
+
+func GetCRConfigs(cdns map[enum.CDNName]struct{}, toClient *to.Session) map[enum.CDNName]CRConfigOrError {
+	crConfigs := map[enum.CDNName]CRConfigOrError{}
+	for cdn, _ := range cdns {
+		crConfigBytes, err := toClient.CRConfigRaw(string(cdn))
+		if err != nil {
+			crConfigs[cdn] = CRConfigOrError{Err: fmt.Errorf("getting CRConfig: %v", err)}
+			continue
+		}
+
+		crConfig := crconfig.CRConfig{}
+		if err := json.Unmarshal(crConfigBytes, &crConfig); err != nil {
+			crConfigs[cdn] = CRConfigOrError{Err: fmt.Errorf("unmarshalling CRConfig JSON: %v", err)}
+		}
+
+		crConfigs[cdn] = CRConfigOrError{CRConfig: &crConfig}
+	}
+	return crConfigs
 }

@@ -54,49 +54,51 @@ ok $t->post_ok(
 #HTTP DS
 ok $t->post_ok(
 	'/ds/create' => form => {
-		'ds.active'                      => '1',
-		'ds.ccr_dns_ttl'                 => '3600',
-		'ds.check_path'                  => '/clientaccesspolicy.xml',
-		'ds.dns_bypass_ip'               => '',
-		'ds.dns_bypass_ip6'              => '',
-		'ds.dns_bypass_cname'            => '',
-		'ds.dns_bypass_ttl'              => '30',
-		'ds.dscp'                        => '40',
-		'ds.geo_limit'                   => '0',
-		'ds.geo_limit_countries'         => '',
-		'ds.geo_provider'                => '1',
-		'ds.global_max_mbps'             => '',
-		'ds.global_max_tps'              => '',
-		'ds.http_bypass_fqdn'            => '',
-		'ds.info_url'                    => '',
-		'ds.long_desc'                   => 'description',
-		'ds.long_desc_1'                 => 'ccp',
-		'ds.long_desc_2'                 => 'Columbus',
-		'ds.max_dns_answers'             => '0',
-		'ds.miss_lat'                    => '41.881944',
-		'ds.miss_long'                   => '-87.627778',
-		'ds.org_server_fqdn'             => 'http://jvd.knutsel.com',
-		'ds.multi_site_origin'           => '0',
-		'ds.multi_site_origin_algorithm' => '0',
-		'ds.profile'                     => '100',
-		'ds.cdn_id'                      => '100',
-		'ds.qstring_ignore'              => '0',
-		're_order_0'                     => '0',
-		're_re_0'                        => '.*\.jvdtest\..*',
-		're_type_0'                      => 'HOST_REGEXP',
-		'ds.signed'                      => '0',
-		'ds.type'                        => '8',
-		'ds.xml_id'                      => 'tst_xml_id_1',
-		'ds.protocol'                    => '3',
-		'ds.edge_header_rewrite'         => '',
-		'ds.mid_header_rewrite'          => '',
-		'ds.regex_remap'                 => '',
-		'ds.origin_shield'               => '',
-		'ds.range_request_handling'      => '0',
-		'ds.ipv6_routing_enabled'        => '1',
-		'ds.display_name'                => 'display name 1',
-		'ds.regional_geo_blocking'       => '1',
-		'ds.geolimit_redirect_url'       => '',
+		'ds.active'                          => '1',
+		'ds.ccr_dns_ttl'                     => '3600',
+		'ds.check_path'                      => '/clientaccesspolicy.xml',
+		'ds.dns_bypass_ip'                   => '',
+		'ds.dns_bypass_ip6'                  => '',
+		'ds.dns_bypass_cname'                => '',
+		'ds.dns_bypass_ttl'                  => '30',
+		'ds.dscp'                            => '40',
+		'ds.geo_limit'                       => '0',
+		'ds.geo_limit_countries'             => '',
+		'ds.geo_provider'                    => '1',
+		'ds.global_max_mbps'                 => '',
+		'ds.global_max_tps'                  => '',
+		'ds.http_bypass_fqdn'                => '',
+		'ds.info_url'                        => '',
+		'ds.long_desc'                       => 'description',
+		'ds.long_desc_1'                     => 'ccp',
+		'ds.long_desc_2'                     => 'Columbus',
+		'ds.max_dns_answers'                 => '0',
+		'ds.miss_lat'                        => '41.881944',
+		'ds.miss_long'                       => '-87.627778',
+		'ds.org_server_fqdn'                 => 'http://jvd.knutsel.com',
+		'ds.multi_site_origin'               => '0',
+		'ds.multi_site_origin_algorithm'     => '0',
+		'ds.profile'                         => '100',
+		'ds.cdn_id'                          => '100',
+		'ds.qstring_ignore'                  => '0',
+		're_order_0'                         => '0',
+		're_re_0'                            => '.*\.jvdtest\..*',
+		're_type_0'                          => 'HOST_REGEXP',
+		'ds.signed'                          => '0',
+		'ds.type'                            => '8',
+		'ds.xml_id'                          => 'tst_xml_id_1',
+		'ds.protocol'                        => '3',
+		'ds.edge_header_rewrite'             => '',
+		'ds.mid_header_rewrite'              => '',
+		'ds.regex_remap'                     => '',
+		'ds.origin_shield'                   => '',
+		'ds.range_request_handling'          => '0',
+		'ds.ipv6_routing_enabled'            => '1',
+		'ds.display_name'                    => 'display name 1',
+		'ds.regional_geo_blocking'           => '1',
+		'ds.geolimit_redirect_url'           => '',
+		'ds.session_tracking_enabled'        => '0',
+		'ds.session_tracking_query_key_list' => '',
 	}
 )->status_is(302), "create HTTP delivery service";
 my $t1_id = &get_ds_id('tst_xml_id_1');
@@ -105,48 +107,50 @@ ok defined($t1_id), "validated http ds was added";
 # DNS DS
 ok $t->post_ok(
 	'/ds/create' => form => {
-		'ds.active'                      => '0',
-		'ds.ccr_dns_ttl'                 => '30',
-		'ds.check_path'                  => '/clientaccesspolicy.xml',
-		'ds.dns_bypass_ip'               => '',
-		'ds.dns_bypass_ip6'              => '',
-		'ds.dns_bypass_cname'            => '',
-		'ds.dns_bypass_ttl'              => '30',
-		'ds.dscp'                        => '42',
-		'ds.geo_limit'                   => '0',
-		'ds.geo_limit_countries'         => '',
-		'ds.global_max_mbps'             => '',
-		'ds.global_max_tps'              => '',
-		'ds.http_bypass_fqdn'            => '',
-		'ds.info_url'                    => '',
-		'ds.long_desc'                   => '',
-		'ds.long_desc_1'                 => 'ccp',
-		'ds.long_desc_2'                 => 'Columbus',
-		'ds.max_dns_answers'             => '0',
-		'ds.miss_lat'                    => '41.881944',
-		'ds.miss_long'                   => '-87.627778',
-		'ds.org_server_fqdn'             => 'http://jvd-1.knutsel.com',
-		'ds.multi_site_origin'           => '0',
-		'ds.multi_site_origin_algorithm' => '0',
-		'ds.profile'                     => '100',
-		'ds.cdn_id'                      => '100',
-		'ds.qstring_ignore'              => '0',
-		'ds.signed'                      => '0',
-		'ds.type'                        => '9',
-		'ds.xml_id'                      => 'tst_xml_id_2',
-		'ds.protocol'                    => '0',
-		'ds.edge_header_rewrite'         => '',
-		'ds.mid_header_rewrite'          => '',
-		'ds.regex_remap'                 => '',
-		'ds.range_request_handling'      => '0',
-		'ds.origin_shield'               => '',
-		're_order_0'                     => '0',
-		're_re_0'                        => '.*\.jvdtest-1\..*',
-		're_type_0'                      => 'HOST_REGEXP',
-		'ds.ipv6_routing_enabled'        => '0',
-		'ds.display_name'                => 'display name 2',
-		'ds.regional_geo_blocking'       => '0',
-		'ds.geolimit_redirect_url'       => '',
+		'ds.active'                          => '0',
+		'ds.ccr_dns_ttl'                     => '30',
+		'ds.check_path'                      => '/clientaccesspolicy.xml',
+		'ds.dns_bypass_ip'                   => '',
+		'ds.dns_bypass_ip6'                  => '',
+		'ds.dns_bypass_cname'                => '',
+		'ds.dns_bypass_ttl'                  => '30',
+		'ds.dscp'                            => '42',
+		'ds.geo_limit'                       => '0',
+		'ds.geo_limit_countries'             => '',
+		'ds.global_max_mbps'                 => '',
+		'ds.global_max_tps'                  => '',
+		'ds.http_bypass_fqdn'                => '',
+		'ds.info_url'                        => '',
+		'ds.long_desc'                       => '',
+		'ds.long_desc_1'                     => 'ccp',
+		'ds.long_desc_2'                     => 'Columbus',
+		'ds.max_dns_answers'                 => '0',
+		'ds.miss_lat'                        => '41.881944',
+		'ds.miss_long'                       => '-87.627778',
+		'ds.org_server_fqdn'                 => 'http://jvd-1.knutsel.com',
+		'ds.multi_site_origin'               => '0',
+		'ds.multi_site_origin_algorithm'     => '0',
+		'ds.profile'                         => '100',
+		'ds.cdn_id'                          => '100',
+		'ds.qstring_ignore'                  => '0',
+		'ds.signed'                          => '0',
+		'ds.type'                            => '9',
+		'ds.xml_id'                          => 'tst_xml_id_2',
+		'ds.protocol'                        => '0',
+		'ds.edge_header_rewrite'             => '',
+		'ds.mid_header_rewrite'              => '',
+		'ds.regex_remap'                     => '',
+		'ds.range_request_handling'          => '0',
+		'ds.origin_shield'                   => '',
+		're_order_0'                         => '0',
+		're_re_0'                            => '.*\.jvdtest-1\..*',
+		're_type_0'                          => 'HOST_REGEXP',
+		'ds.ipv6_routing_enabled'            => '0',
+		'ds.display_name'                    => 'display name 2',
+		'ds.regional_geo_blocking'           => '0',
+		'ds.geolimit_redirect_url'           => '',
+		'ds.session_tracking_enabled'        => '1',
+		'ds.session_tracking_query_key_list' => 'key3,key4',
 	}
 )->status_is(302), "create DNS DeliveryService";
 $t2_id = &get_ds_id('tst_xml_id_2');
@@ -155,51 +159,53 @@ ok defined($t2_id), "validated dns ds was added";
 #create DS ALL FIELDS
 ok $t->post_ok(
 	'/ds/create' => form => {
-		'ds.active'                      => '1',
-		'ds.ccr_dns_ttl'                 => '3600',
-		'ds.check_path'                  => '/clientaccesspolicy.xml',
-		'ds.dns_bypass_ip'               => '10.10.10.10',
-		'ds.dns_bypass_ip6'              => '2001:558:fee8:180::2/64',
-		'ds.dns_bypass_cname'            => 'bypass.knutsel.com',
-		'ds.dns_bypass_ttl'              => '30',
-		'ds.dscp'                        => '40',
-		'ds.geo_limit'                   => '1',
-		'ds.geo_limit_countries'         => '',
-		'ds.global_max_mbps'             => '30G',
-		'ds.global_max_tps'              => '10000',
-		'ds.http_bypass_fqdn'            => 'overflow.knutsel.com',
-		'ds.info_url'                    => 'http://knutsel.com',
-		'ds.long_desc'                   => 'long',
-		'ds.long_desc_1'                 => 'cust',
-		'ds.long_desc_2'                 => 'service',
-		'ds.max_dns_answers'             => '0',
-		'ds.miss_lat'                    => '41.881944',
-		'ds.miss_long'                   => '-87.627778',
-		'ds.org_server_fqdn'             => 'http://jvd.knutsel.com',
-		'ds.multi_site_origin'           => '0',
-		'ds.multi_site_origin_algorithm' => '0',
-		'ds.profile'                     => '100',
-		'ds.cdn_id'                      => '100',
-		'ds.qstring_ignore'              => '1',
-		'ds.signed'                      => '1',
-		'ds.type'                        => '9',
-		'ds.xml_id'                      => 'tst_xml_id_3',
-		'ds.protocol'                    => '0',
-		'ds.edge_header_rewrite'         => '',
-		'ds.mid_header_rewrite'          => '',
-		'ds.regex_remap'                 => '',
-		'ds.range_request_handling'      => '0',
-		'ds.origin_shield'               => '',
-		're_order_0'                     => '0',
-		're_re_0'                        => '.*\.jvdtest-3\..*',
-		're_type_0'                      => 'HOST_REGEXP',
-		're_order_1'                     => '0',
-		're_re_1'                        => '/path/to/goodies/.*',
-		're_type_1'                      => 'PATH_REGEXP',
-		'ds.ipv6_routing_enabled'        => '1',
-		'ds.display_name'                => 'display name 3',
-		'ds.regional_geo_blocking'       => '0',
-		'ds.geolimit_redirect_url'       => 'http://knutsel3.com',
+		'ds.active'                          => '1',
+		'ds.ccr_dns_ttl'                     => '3600',
+		'ds.check_path'                      => '/clientaccesspolicy.xml',
+		'ds.dns_bypass_ip'                   => '10.10.10.10',
+		'ds.dns_bypass_ip6'                  => '2001:558:fee8:180::2/64',
+		'ds.dns_bypass_cname'                => 'bypass.knutsel.com',
+		'ds.dns_bypass_ttl'                  => '30',
+		'ds.dscp'                            => '40',
+		'ds.geo_limit'                       => '1',
+		'ds.geo_limit_countries'             => '',
+		'ds.global_max_mbps'                 => '30G',
+		'ds.global_max_tps'                  => '10000',
+		'ds.http_bypass_fqdn'                => 'overflow.knutsel.com',
+		'ds.info_url'                        => 'http://knutsel.com',
+		'ds.long_desc'                       => 'long',
+		'ds.long_desc_1'                     => 'cust',
+		'ds.long_desc_2'                     => 'service',
+		'ds.max_dns_answers'                 => '0',
+		'ds.miss_lat'                        => '41.881944',
+		'ds.miss_long'                       => '-87.627778',
+		'ds.org_server_fqdn'                 => 'http://jvd.knutsel.com',
+		'ds.multi_site_origin'               => '0',
+		'ds.multi_site_origin_algorithm'     => '0',
+		'ds.profile'                         => '100',
+		'ds.cdn_id'                          => '100',
+		'ds.qstring_ignore'                  => '1',
+		'ds.signed'                          => '1',
+		'ds.type'                            => '9',
+		'ds.xml_id'                          => 'tst_xml_id_3',
+		'ds.protocol'                        => '0',
+		'ds.edge_header_rewrite'             => '',
+		'ds.mid_header_rewrite'              => '',
+		'ds.regex_remap'                     => '',
+		'ds.range_request_handling'          => '0',
+		'ds.origin_shield'                   => '',
+		're_order_0'                         => '0',
+		're_re_0'                            => '.*\.jvdtest-3\..*',
+		're_type_0'                          => 'HOST_REGEXP',
+		're_order_1'                         => '0',
+		're_re_1'                            => '/path/to/goodies/.*',
+		're_type_1'                          => 'PATH_REGEXP',
+		'ds.ipv6_routing_enabled'            => '1',
+		'ds.display_name'                    => 'display name 3',
+		'ds.regional_geo_blocking'           => '0',
+		'ds.geolimit_redirect_url'           => 'http://knutsel3.com',
+		'ds.session_tracking_enabled'        => '0',
+		'ds.session_tracking_query_key_list' => '',
 	}
 )->status_is(302), "create HTTP_NO_CACHE deliveryservice";
 
@@ -216,15 +222,11 @@ ok $t->get_ok('/ds/1')->status_is(200), "validate existing delivery service";
 # Note the 4 is the index, not the id.
 #This can potentially make the tests fragile if more ds's are added to the fixtures...
 
-ok $t->get_ok('/datadeliveryservice')->
-	status_is(200)->
-	json_is( '/0/dscp' => '40' )
-	->json_is( '/0/active' => '1' )
-	->json_is( '/0/protocol' => '3' )
-	->json_is( '/0/display_name' => 'display name 1' )
-	->json_is( '/0/regional_geo_blocking' => '1' )
-	->json_is( '/0/regional_geo_blocking' => '1' )
-	->json_is( '/1/regional_geo_blocking' => '0' ),
+ok $t->get_ok('/datadeliveryservice')->status_is(200)->json_is( '/0/dscp' => '40' )->json_is( '/0/active' => '1' )->json_is( '/0/protocol' => '3' )
+	->json_is( '/0/display_name' => 'display name 1' )->json_is( '/0/regional_geo_blocking' => '1' )->json_is( '/0/regional_geo_blocking' => '1' )
+	->json_is( '/1/regional_geo_blocking' => '0' )->json_is( '/0/session_tracking_enabled' => '1' )
+	->json_is( '/0/session_tracking_query_key_list' => 'key1,key2' )->json_is( '/7/session_tracking_enabled' => '1' )
+	->json_is( '/7/session_tracking_query_key_list' => 'key3,key4' )->json_is( '/6/session_tracking_enabled' => '0' ),
 	"validate delivery services were created";
 
 $t2_id = &get_ds_id('tst_xml_id_2');
@@ -286,33 +288,17 @@ ok $t->post_ok(
 # Note the 4 is the index, not the id.
 #The delivery service that was updated is always the last one in the list coming back from /datadeliveryservice.
 #This can potentially make the tests fragile if more ds's are added to the fixtures...
-ok $t->get_ok('/datadeliveryservice')->status_is(200)
-  ->or( sub { diag $t->tx->res->content->asset->{content}; } )
-  ->json_is( '/1/dscp' => '41' )
-  ->json_is( '/1/active' => '0' )
-  ->json_is( '/1/profile_description' => 'mid description' )
-  ->json_is( '/1/org_server_fqdn'     => 'http://update.knutsel.com' )
-  ->json_is( '/1/xml_id'              => 'tst_xml_id_2' )
-  ->json_is( '/1/signed'         => '0' )
-  ->json_is( '/1/qstring_ignore' => '0' )
-  ->json_is( '/1/dns_bypass_ip'  => '10.10.10.11' )
-  ->json_is( '/1/dns_bypass_ip6' => '2001:558:fee8:180::1/64' )
-  ->json_is( '/1/dns_bypass_ttl' => '31' )
-  ->json_is( '/1/ccr_dns_ttl' => 3601 )
-  ->json_is( '/1/global_max_mbps' => 4000000 )
-  ->json_is( '/1/global_max_tps' => 10001 )
-  ->json_is( '/1/miss_lat' => '0' )
-  ->json_is( '/1/miss_long' => '0' )
-  ->json_is( '/1/long_desc' => 'long_update' )
-  ->json_is( '/1/long_desc_1' => 'cust_update' )
-  ->json_is( '/1/long_desc_2' => 'service_update' )
-  ->json_is( '/1/info_url'    => 'http://knutsel-update.com' )
-  ->json_is( '/1/protocol'    => '1' )
-  ->json_is( '/1/profile_name' => 'MID1' )
-  ->json_is( '/1/geolimit_redirect_url' => 'http://update.redirect.url.com' )
-  ->json_is( '/1/display_name'          => 'Testing Delivery Service' )
-  ->json_is( '/1/regional_geo_blocking' => '1' ),
-  "validate delivery service was updated";
+ok $t->get_ok('/datadeliveryservice')->status_is(200)->or( sub { diag $t->tx->res->content->asset->{content}; } )->json_is( '/1/dscp' => '41' )
+	->json_is( '/1/active' => '0' )->json_is( '/1/profile_description' => 'mid description' )
+	->json_is( '/1/org_server_fqdn' => 'http://update.knutsel.com' )->json_is( '/1/xml_id' => 'tst_xml_id_2' )->json_is( '/1/signed' => '0' )
+	->json_is( '/1/qstring_ignore' => '0' )->json_is( '/1/dns_bypass_ip' => '10.10.10.11' )->json_is( '/1/dns_bypass_ip6' => '2001:558:fee8:180::1/64' )
+	->json_is( '/1/dns_bypass_ttl' => '31' )->json_is( '/1/ccr_dns_ttl' => 3601 )->json_is( '/1/global_max_mbps' => 4000000 )
+	->json_is( '/1/global_max_tps' => 10001 )->json_is( '/1/miss_lat' => '0' )->json_is( '/1/miss_long' => '0' )
+	->json_is( '/1/long_desc' => 'long_update' )->json_is( '/1/long_desc_1' => 'cust_update' )->json_is( '/1/long_desc_2' => 'service_update' )
+	->json_is( '/1/info_url' => 'http://knutsel-update.com' )->json_is( '/1/protocol' => '1' )->json_is( '/1/profile_name' => 'MID1' )
+	->json_is( '/1/geolimit_redirect_url' => 'http://update.redirect.url.com' )->json_is( '/1/display_name' => 'Testing Delivery Service' )
+	->json_is( '/1/regional_geo_blocking' => '1' ),
+	"validate delivery service was updated";
 
 #delete delivery service
 ok $t->get_ok("/ds/$t2_id/delete")->status_is(302), "delete ds";
@@ -331,7 +317,6 @@ sub get_ds_id {
 	my $id = $p->[0]->{id};
 	return $id;
 }
-ok $t->get_ok('/logout')->status_is(302)
-  ->or( sub { diag $t->tx->res->content->asset->{content}; } );
+ok $t->get_ok('/logout')->status_is(302)->or( sub { diag $t->tx->res->content->asset->{content}; } );
 $dbh->disconnect();
 done_testing();

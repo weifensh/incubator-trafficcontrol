@@ -1016,7 +1016,8 @@ sub create {
 	$self->stash_cdn_selector();
 	&stash_role($self);
 	if ( $self->check_deliveryservice_input($cdn_id) ) {
-		my $tenantUtils = Utils::Tenant->new($self);
+		my $tenant_utils = Utils::Tenant->new($self);
+		my $tenant_id = $tenant_utils->current_user_tenant();
 		my $insert = $self->db->resultset('Deliveryservice')->create(
 			{
 				xml_id                      => $self->paramAsScalar('ds.xml_id'),
@@ -1062,7 +1063,7 @@ sub create {
 				remap_text         => $self->paramAsScalar( 'ds.remap_text',         undef ),
 				initial_dispersion => $self->paramAsScalar( 'ds.initial_dispersion', 1 ),
 				logs_enabled       => $self->paramAsScalar('ds.logs_enabled'),
-				tenant_id => $tenantUtils->current_user_tenant(),#Tenancy is not dealt by the UI for now. getting the tenancy from the user
+				tenant_id => $tenant_id,
 				session_tracking_enabled        => $self->paramAsScalar('ds.session_tracking_enabled'),
 				session_tracking_query_key_list => $self->paramAsScalar('ds.session_tracking_query_key_list'),
 			}
